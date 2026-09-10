@@ -1,5 +1,6 @@
 import { getSnapshot } from '@/lib/market'
-import { FundingChart, HorizontalRanking, ProductDonut, VenueBarChart } from '@/components/Charts'
+import { getResearchSeries } from '@/lib/research'
+import { FundingChart, HorizontalRanking, ProductDonut, ResearchLineChart, VenueBarChart } from '@/components/Charts'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -20,6 +21,7 @@ function ChartCard({title,context,children,source,id}:{title:string;context:stri
 
 export default async function Home(){
   const data=await getSnapshot()
+  const research=await getResearchSeries(data.markets)
 
   const perps=data.markets.filter(m=>m.productLayer==='TradFi Perps')
   const tokenizedSpot=data.markets.filter(m=>m.productLayer==='Tokenized Spot')
@@ -57,6 +59,7 @@ export default async function Home(){
   const coveragePartial=data.coverage.filter(c=>c.status==='PARTIAL'||c.status==='COLLECTING').length
   const coverageUnavailable=data.coverage.filter(c=>c.status==='PRIVATE'||c.status==='UNAVAILABLE').length
   const asOf=new Date(data.asOf).toLocaleString('en-GB',{timeZone:'Asia/Singapore',hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})
+  const researchScope=`${research.meta.candleSeries} historical venue-instrument series · ${research.meta.venues.join(' / ')||'public APIs'}`
 
   return <div className="appShell">
     <header className="globalHeader">
@@ -68,8 +71,8 @@ export default async function Home(){
     <div className="terminal shell">
       <aside className="sideNav">
         <div className="navGroup"><span>PRODUCT LAYERS</span><a className="selected" href="#overview">Overview</a><a href="#perps">TradFi Perps</a>{tokenizedSpot.length>0&&<a href="#tokenized-spot">Tokenized Spot</a>}<a className="disabled">Real Equity <em>private volume</em></a><a className="disabled">CFD / Broker <em>pending</em></a></div>
-        <div className="navGroup"><span>MARKET STRUCTURE</span><a href="#volume">Volume</a><a href="#open-interest">Open Interest</a><a href="#funding">Funding</a><a href="#liquidity">Liquidity</a></div>
-        <div className="navGroup"><span>RESEARCH</span><a className="disabled">Price Discovery <em>collecting</em></a><a className="disabled">Capital Flow <em>private</em></a><a href="#methodology">Data Coverage</a></div>
+        <div className="navGroup"><span>RESEARCH</span><a href="#research">Duo Research Indices</a><a href="#activity-momentum">Activity Momentum</a><a href="#price-dispersion">Price Dispersion</a></div>
+        <div className="navGroup"><span>MARKET STRUCTURE</span><a href="#volume">Volume</a><a href="#open-interest">Open Interest</a><a href="#funding">Funding</a><a href="#liquidity">Liquidity</a><a href="#methodology">Data Coverage</a></div>
         <div className="coverageMini"><span>Mapped universe</span><strong>{data.liveVenues} venues · {data.liveInstruments} instruments</strong><small>Product layers are classified first and never blindly summed together.</small></div>
       </aside>
 
@@ -86,6 +89,14 @@ export default async function Home(){
           <div className="metricCell"><span>TradFi Perps Open Interest</span><strong>{perpsOi===null?'—':usd(perpsOi)}</strong><small>Perpetual/futures layer only</small></div>
           <div className="metricCell"><span>TradFi Perp Instruments</span><strong>{perps.length.toLocaleString()}</strong><small>Explicitly mapped contracts</small></div>
           <div className="metricCell"><span>TradFi Perp Venues</span><strong>{perpsVenues.length} <b>venues</b></strong><small>No Real Equity / Tokenized Spot / CFD mixing</small></div>
+        </section>
+
+        <div className="sectionBar" id="research"><div><h2>Duo Research Indices</h2></div><small>2026 YTD · public historical APIs · no synthetic backfill</small></div>
+        <section className="chartGrid">
+          <ChartCard title="Duo TradFi Activity Momentum" context="2026 YTD" source={`Median (7D avg turnover / 30D avg turnover − 1) across active core contracts · ${researchScope}`} id="activity-momentum"><ResearchLineChart data={research.activityMomentum} unit="pct" zeroLine/></ChartCard>
+          <ChartCard title="Duo TradFi Participation Breadth" context="2026 YTD" source="Share of core venue-contracts whose 7D average turnover is above their own 30D average"><ResearchLineChart data={research.participationBreadth} unit="index"/></ChartCard>
+          <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion"><ResearchLineChart data={research.priceDispersion} unit="bp"/></ChartCard>
+          <ChartCard title="Duo Funding Stress Index" context="2026 YTD" source="Rolling 60-day percentile of median absolute funding in the Binance Duo core TradFi basket · 80+ = elevated"><ResearchLineChart data={research.fundingStress} unit="index" stressLine/></ChartCard>
         </section>
 
         <div className="sectionBar" id="perps"><div><h2>TradFi Perps</h2></div><small>Stocks · ETFs · indices · commodities · FX · bonds · pre-IPO, kept within the derivatives layer</small></div>
@@ -125,7 +136,7 @@ export default async function Home(){
           </details>
         </section>
 
-        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V0.6 · Four-layer taxonomy · Public-data-only policy</span></footer>
+        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V0.7 · 2026 YTD research indices · Public-data-only policy</span></footer>
       </main>
     </div>
   </div>
