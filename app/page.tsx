@@ -28,7 +28,8 @@ export default async function Home(){
   const funding=data.markets.filter(m=>m.fundingRate!==null).sort((a,b)=>Math.abs(b.fundingRate||0)-Math.abs(a.fundingRate||0)).slice(0,10).map(m=>({label:m.underlying,value:(m.fundingRate||0)*100,venue:m.venue}))
   const tightSpreads=data.markets.map(m=>({m,s:spreadBp(m.bid,m.ask)})).filter(x=>x.s!==null&&Number.isFinite(x.s)).sort((a,b)=>(a.s||0)-(b.s||0)).slice(0,10).map(x=>({label:`${x.m.underlying} · ${x.m.venue}`,value:x.s||0}))
   const coverageLive=data.coverage.filter(c=>c.status==='LIVE').length
-  const coveragePending=data.coverage.length-coverageLive
+  const coveragePartial=data.coverage.filter(c=>c.status==='PARTIAL'||c.status==='COLLECTING').length
+  const coverageUnavailable=data.coverage.filter(c=>c.status==='PRIVATE'||c.status==='UNAVAILABLE').length
   const asOf=new Date(data.asOf).toLocaleString('en-GB',{timeZone:'Asia/Singapore',hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})
 
   return <div className="appShell">
@@ -58,7 +59,7 @@ export default async function Home(){
           <div className="metricCell"><span>Tracked 24H Volume</span><strong>{usd(data.totalVolume24hUsd)}</strong><small>Rolling venue-reported turnover</small></div>
           <div className="metricCell"><span>Tracked Open Interest</span><strong>{usd(data.totalOpenInterestUsd)}</strong><small>Perpetual markets where available</small></div>
           <div className="metricCell"><span>TradFi Instruments</span><strong>{data.liveInstruments.toLocaleString()}</strong><small>Explicit metadata only</small></div>
-          <div className="metricCell"><span>Coverage</span><strong>{data.liveVenues} <b>venues</b></strong><small>{coverageLive} live metrics · {coveragePending} pending/private</small></div>
+          <div className="metricCell"><span>Coverage</span><strong>{data.liveVenues} <b>venues</b></strong><small>{coverageLive} live metrics · {coveragePartial+coverageUnavailable} pending/private</small></div>
         </section>
 
         <div className="sectionBar" id="volume"><div><span>MARKET OVERVIEW</span><h2>Trading activity</h2></div><small>Current snapshot · rolling 24H metrics</small></div>
@@ -81,8 +82,13 @@ export default async function Home(){
         </section>
 
         <section className="methodology" id="methodology">
-          <div className="methodHead"><div><span className="sectionLabel">DATA GOVERNANCE</span><h2>Coverage & methodology</h2><p>DuoData never substitutes estimates for unavailable venue data. Status is attached to every planned metric before it enters the product.</p></div><div className="methodStat"><strong>{coverageLive}/{data.coverage.length}</strong><span>metrics currently live</span></div></div>
-          <div className="coverageTable"><div className="coverageRow coverageHeader"><span>Metric</span><span>Status</span><span>Source / limitation</span></div>{data.coverage.map(c=><div className="coverageRow" key={c.metric}><strong>{c.metric}</strong><span><i className={`statusDot ${c.status.toLowerCase()}`}/>{c.status}</span><p>{c.note}<small>{c.source}</small></p></div>)}</div>
+          <details>
+            <summary className="methodHead" style={{cursor:'pointer',listStyle:'none',marginBottom:0}}>
+              <div><span className="sectionLabel">DATA GOVERNANCE</span><h2>Coverage & methodology</h2><p style={{marginBottom:0}}>Public-data coverage, source limitations and unavailable metrics.</p></div>
+              <div className="methodStat"><strong>{coverageLive}/{data.coverage.length}</strong><span>metrics live · click to expand</span></div>
+            </summary>
+            <div className="coverageTable" style={{marginTop:16}}><div className="coverageRow coverageHeader"><span>Metric</span><span>Status</span><span>Source / limitation</span></div>{data.coverage.map(c=><div className="coverageRow" key={c.metric}><strong>{c.metric}</strong><span><i className={`statusDot ${c.status.toLowerCase()}`}/>{c.status}</span><p>{c.note}<small>{c.source}</small></p></div>)}</div>
+          </details>
         </section>
 
         <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V0.2 · Public-data-only policy</span></footer>
