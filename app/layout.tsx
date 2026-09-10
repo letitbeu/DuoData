@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import AutoRefresh from './auto-refresh'
 import './globals.css'
 
+export const preferredRegion = 'sin1'
+
 export const metadata: Metadata = {
   title: 'DuoData — TradFi on Crypto Exchanges',
   description: 'Market intelligence for traditional assets traded on crypto exchanges.',
