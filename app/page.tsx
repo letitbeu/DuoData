@@ -19,12 +19,12 @@ function ChartCard({eyebrow,title,context,children,source,id}:{eyebrow:string;ti
 
 export default async function Home(){
   const data=await getSnapshot()
-  const venueVolume=data.venues.map(v=>({label:v.venue,value:v.volume24hUsd}))
+  const venueVolume=data.venues.filter(v=>v.volume24hUsd!==null).map(v=>({label:v.venue,value:v.volume24hUsd as number}))
   const venueOi=data.venues.filter(v=>v.openInterestUsd>0).map(v=>({label:v.venue,value:v.openInterestUsd}))
   const productMap=new Map<string,number>()
-  data.markets.forEach(m=>productMap.set(m.product,(productMap.get(m.product)||0)+m.volume24hUsd))
+  data.markets.forEach(m=>{if(m.volume24hUsd!==null)productMap.set(m.product,(productMap.get(m.product)||0)+m.volume24hUsd)})
   const products=[...productMap].map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value)
-  const topMarkets=data.markets.slice(0,10).map(m=>({label:`${m.underlying} · ${m.venue}`,value:m.volume24hUsd}))
+  const topMarkets=data.markets.filter(m=>m.volume24hUsd!==null).slice(0,10).map(m=>({label:`${m.underlying} · ${m.venue}`,value:m.volume24hUsd as number}))
   const funding=data.markets.filter(m=>m.fundingRate!==null).sort((a,b)=>Math.abs(b.fundingRate||0)-Math.abs(a.fundingRate||0)).slice(0,10).map(m=>({label:m.underlying,value:(m.fundingRate||0)*100,venue:m.venue}))
   const tightSpreads=data.markets.map(m=>({m,s:spreadBp(m.bid,m.ask)})).filter(x=>x.s!==null&&Number.isFinite(x.s)).sort((a,b)=>(a.s||0)-(b.s||0)).slice(0,10).map(x=>({label:`${x.m.underlying} · ${x.m.venue}`,value:x.s||0}))
   const coverageLive=data.coverage.filter(c=>c.status==='LIVE').length
@@ -56,29 +56,29 @@ export default async function Home(){
         {data.errors.length>0&&<section className="dataNotice"><strong>Partial coverage</strong><span>{data.errors.join(' · ')}</span></section>}
 
         <section className="metricStrip">
-          <div className="metricCell"><span>Tracked 24H Volume</span><strong>{usd(data.totalVolume24hUsd)}</strong><small>Rolling venue-reported turnover</small></div>
+          <div className="metricCell"><span>Tracked 24H Volume</span><strong>{usd(data.totalVolume24hUsd)}</strong><small>Exact venue-reported quote notional only</small></div>
           <div className="metricCell"><span>Tracked Open Interest</span><strong>{usd(data.totalOpenInterestUsd)}</strong><small>Perpetual markets where available</small></div>
-          <div className="metricCell"><span>TradFi Instruments</span><strong>{data.liveInstruments.toLocaleString()}</strong><small>Explicit metadata only</small></div>
-          <div className="metricCell"><span>Coverage</span><strong>{data.liveVenues} <b>venues</b></strong><small>{coverageLive} live metrics · {coveragePartial+coverageUnavailable} pending/private</small></div>
+          <div className="metricCell"><span>TradFi Instruments</span><strong>{data.liveInstruments.toLocaleString()}</strong><small>Explicit venue metadata only</small></div>
+          <div className="metricCell"><span>Coverage</span><strong>{data.liveVenues} <b>venues</b></strong><small>{coverageLive} live metrics · {coveragePartial+coverageUnavailable} partial/private</small></div>
         </section>
 
-        <div className="sectionBar" id="volume"><div><span>MARKET OVERVIEW</span><h2>Trading activity</h2></div><small>Current snapshot · rolling 24H metrics</small></div>
+        <div className="sectionBar" id="volume"><div><span>MARKET OVERVIEW</span><h2>Trading activity</h2></div><small>Current snapshot · no zero-filling for unavailable metrics</small></div>
         <section className="chartGrid">
-          <ChartCard eyebrow="VOLUME" title="24H TradFi Volume by Exchange" context="ROLLING 24H" source="Source: venue public REST APIs" id="venue"><VenueBarChart data={venueVolume}/></ChartCard>
-          <ChartCard eyebrow="MARKETS" title="Largest TradFi Markets by 24H Volume" context="TOP 10" source="Source: venue-reported quote turnover"><HorizontalRanking data={topMarkets} limit={10}/></ChartCard>
-          <ChartCard eyebrow="PRODUCT MIX" title="TradFi Volume by Product Wrapper" context="ROLLING 24H" source="Product classification follows venue metadata"><ProductDonut data={products}/></ChartCard>
-          <ChartCard eyebrow="OPEN INTEREST" title="TradFi Open Interest by Exchange" context="CURRENT" source="Direct OI value or OI size × mark price" id="open-interest"><VenueBarChart data={venueOi}/></ChartCard>
+          <ChartCard eyebrow="VOLUME" title="24H TradFi Volume by Exchange" context="ROLLING 24H" source="Exact quote turnover where venue publishes it · OKX excluded from this chart" id="venue"><VenueBarChart data={venueVolume}/></ChartCard>
+          <ChartCard eyebrow="MARKETS" title="Largest TradFi Markets by 24H Volume" context="TOP 10" source="Exact venue-reported quote turnover only"><HorizontalRanking data={topMarkets} limit={10}/></ChartCard>
+          <ChartCard eyebrow="PRODUCT MIX" title="TradFi Volume by Product Wrapper" context="ROLLING 24H" source="Product classification follows venue-native metadata"><ProductDonut data={products}/></ChartCard>
+          <ChartCard eyebrow="OPEN INTEREST" title="TradFi Open Interest by Exchange" context="CURRENT" source="Venue OI USD or contract/base quantity × venue mark" id="open-interest"><VenueBarChart data={venueOi}/></ChartCard>
         </section>
 
         <div className="sectionBar"><div><span>POSITIONING & LIQUIDITY</span><h2>Market structure</h2></div><small>Live snapshot · no historical backfill</small></div>
         <section className="chartGrid">
-          <ChartCard eyebrow="FUNDING" title="Most Extreme Funding Rates" context="CURRENT" source="Current funding; settlement intervals may differ" id="funding"><FundingChart data={funding}/></ChartCard>
+          <ChartCard eyebrow="FUNDING" title="Most Extreme Funding Rates" context="CURRENT" source="Current normalized funding only; unsupported venues remain blank" id="funding"><FundingChart data={funding}/></ChartCard>
           <ChartCard eyebrow="LIQUIDITY" title="Tightest Top-of-Book Spreads" context="TOP 10" source="Best bid / ask only; not full depth" id="liquidity"><HorizontalRanking data={tightSpreads} unit="bp" limit={10}/></ChartCard>
         </section>
 
         <section className="marketSection" id="markets">
-          <div className="sectionBar tableTitle"><div><span>MARKET DIRECTORY</span><h2>TradFi instruments</h2></div><small>{data.markets.length} live instruments · ranked by 24H turnover</small></div>
-          <div className="tableWrap"><table><thead><tr><th>Instrument</th><th>Venue</th><th>Product</th><th>Last</th><th>24H</th><th>24H Volume</th><th>Open Interest</th><th>Funding</th><th>Spread</th></tr></thead><tbody>{data.markets.slice(0,40).map(m=>{const s=spreadBp(m.bid,m.ask);return <tr key={`${m.venue}-${m.symbol}-${m.product}`}><td><strong>{m.underlying}</strong><small>{m.symbol}</small></td><td>{m.venue}</td><td><span className="productTag">{m.product}</span></td><td>{price(m.lastPrice)}</td><td className={(m.change24h||0)>=0?'positiveText':'negativeText'}>{pct(m.change24h)}</td><td>{usd(m.volume24hUsd)}</td><td>{m.openInterestUsd===null?'—':usd(m.openInterestUsd)}</td><td className={(m.fundingRate||0)>=0?'negativeText':'positiveText'}>{pct(m.fundingRate)}</td><td>{s===null?'—':`${s.toFixed(s<10?1:0)} bp`}</td></tr>})}</tbody></table></div>
+          <div className="sectionBar tableTitle"><div><span>MARKET DIRECTORY</span><h2>TradFi instruments</h2></div><small>{data.markets.length} live instruments · turnover unavailable fields shown as —</small></div>
+          <div className="tableWrap"><table><thead><tr><th>Instrument</th><th>Venue</th><th>Product</th><th>Last</th><th>24H</th><th>24H Volume</th><th>Open Interest</th><th>Funding</th><th>Spread</th></tr></thead><tbody>{data.markets.slice(0,60).map(m=>{const s=spreadBp(m.bid,m.ask);return <tr key={`${m.venue}-${m.symbol}-${m.product}`}><td><strong>{m.underlying}</strong><small>{m.symbol}</small></td><td>{m.venue}</td><td><span className="productTag">{m.product}</span></td><td>{price(m.lastPrice)}</td><td className={m.change24h===null?'':m.change24h>=0?'positiveText':'negativeText'}>{pct(m.change24h)}</td><td>{m.volume24hUsd===null?'—':usd(m.volume24hUsd)}</td><td>{m.openInterestUsd===null?'—':usd(m.openInterestUsd)}</td><td className={m.fundingRate===null?'':m.fundingRate>=0?'negativeText':'positiveText'}>{pct(m.fundingRate)}</td><td>{s===null?'—':`${s.toFixed(s<10?1:0)} bp`}</td></tr>})}</tbody></table></div>
         </section>
 
         <section className="methodology" id="methodology">
@@ -91,7 +91,7 @@ export default async function Home(){
           </details>
         </section>
 
-        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V0.2 · Public-data-only policy</span></footer>
+        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V0.3 · Public-data-only policy</span></footer>
       </main>
     </div>
   </div>
