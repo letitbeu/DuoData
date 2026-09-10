@@ -30,9 +30,9 @@ Asset class is a **second-level dimension**, not a product layer. Current normal
 
 | Venue / Product | Product layer | Instrument list | 24h venue volume | OI | Funding | L1 quote | Status |
 |---|---|---|---:|---:|---:|---:|---|
-| Binance TradFi Perpetuals | TradFi Perps | Public Futures metadata | Yes, exact quote volume | Partial | Partial | Yes | **LIVE / PARTIAL** |
+| Binance TradFi Perpetuals | TradFi Perps | Public Futures metadata | Yes, exact quote volume | Partial | Yes | Yes | **LIVE / PARTIAL** |
 | Bybit Stock / Commodity Perpetuals | TradFi Perps | Public V5 API (`symbolType`) | Yes | Yes | Yes | Yes | **LIVE** |
-| Bitget RWA Perpetuals | TradFi Perps | Public V2 API (`isRwa=YES`) | Yes | Yes | Yes | Yes | **LIVE** |
+| Bitget RWA Perpetuals | TradFi Perps | Public V2/V3 APIs (`isRwa=YES`) | Yes | Yes | Yes | Yes | **LIVE** |
 | OKX Stock / TradFi Perpetuals | TradFi Perps | Public V5 metadata (`instCategory`) | Exact USD turnover not published | Yes | Partial | Yes | **PARTIAL** |
 | Coinbase INTX TradFi Perpetuals | TradFi Perps | Public International Exchange API | Yes | Yes | Predicted funding requires normalization | Yes | **LIVE / PARTIAL** |
 | Kraken xStocks / TradFi Perpetuals | TradFi Perps | Public Futures API + official contract IDs | Yes | Partial | Partial | Yes | **LIVE / PARTIAL** |
@@ -41,6 +41,23 @@ Asset class is a **second-level dimension**, not a product layer. Current normal
 | Binance bStocks | Tokenized Spot | Public/developer APIs | Pending production adapter | N/A | N/A | Pending | **PARTIAL** |
 | rToken products | Tokenized Spot | Venue/token issuer APIs | Pending production adapter | N/A | N/A | Pending | **PARTIAL** |
 | Bybit TradFi CFD / MT5 | CFD / Broker | Broker/MT5 interfaces | **No validated public venue customer-turnover series** | Product-specific | Product-specific | Product-specific | **UNAVAILABLE / PARTIAL** |
+
+## Duo Research Indices — 2026 YTD
+
+The first DuoData proprietary time-series indicators use only exchange-published historical market data. The chart x-axis is fixed to 2026 YTD; a series begins only when sufficient genuine observations exist.
+
+| Index | Status | Definition |
+|---|---|---|
+| **Duo TradFi Activity Momentum** | **LIVE / PARTIAL** | For each active core venue-contract, calculate `7D average quote turnover / 30D average quote turnover - 1`; the daily index is the cross-sectional median. Positive = activity accelerating. |
+| **Duo TradFi Participation Breadth** | **LIVE / PARTIAL** | Percentage of active core venue-contracts whose own 7D average quote turnover exceeds their 30D average. Range 0–100. High breadth means acceleration is broad rather than concentrated in one contract. |
+| **Duo Cross-Venue Price Dispersion** | **LIVE / PARTIAL** | For the same underlying available on 2+ venues, calculate the mean absolute deviation of daily close prices from the cross-venue median in basis points; the index is the median across qualifying underlyings. Contract-price unit mismatches above 25% are excluded. |
+| **Duo Funding Stress Index** | **LIVE / PARTIAL** | Rolling 60-observation percentile rank of the median absolute funding rate across the Binance Duo core TradFi basket. Range 0–100; 80+ indicates unusually stressed/crowded funding versus the recent regime. |
+
+### Core research basket
+
+DuoData v0.7 attempts to map a fixed set of liquid traditional underlyings across supported venues: `XAU`, `XAG`, `WTI/CL`, `NVDA`, `TSLA`, `AAPL`, `META`, `AMZN`, `GOOGL`, `QQQ`, `SPY`, `SPX`. A venue-underlying pair enters an index only when it is explicitly mapped as **TradFi Perps** and a valid historical series is returned.
+
+Historical quote turnover is read directly from exchange daily candles: Binance USDⓈ-M kline quote-asset volume, Bybit linear kline turnover, and Bitget USDT-futures candle quote turnover. Missing venue histories are omitted rather than zero-filled.
 
 ## DuoData metrics
 
@@ -54,7 +71,7 @@ Asset class is a **second-level dimension**, not a product layer. Current normal
 | Tokenized Spot 24h volume | **PARTIAL** | Kept fully separate from TradFi Perps; current live coverage is incomplete across issuers/venues |
 | Real Equity customer turnover | **PRIVATE** | Underlying exchange market volume must not be substituted for crypto-platform customer stock turnover |
 | CFD / Broker customer turnover | **UNAVAILABLE / PARTIAL** | Kept separate until a reliable public venue-specific series is validated |
-| Historical DuoData volume / OI | **COLLECTING** | Persistent snapshots only; no synthetic backfill |
+| Historical full-universe DuoData volume / OI | **COLLECTING** | Official historical APIs are used where available; otherwise persistent snapshots begin when collection starts |
 | ±10 / ±25 / ±50 bp depth | **PARTIAL** | Rate-limit-aware L2 collector per instrument |
 | $10k / $100k / $500k slippage | **PARTIAL** | L2 collector + standardized execution simulation |
 | TradFi Tracking Error Index | **PARTIAL** | Independent consolidated underlying reference-price feed required |
@@ -79,8 +96,8 @@ A Stock+ quote endpoint may expose AAPL's price, volume and turnover from the un
 ### 3. Cross-layer totals are prohibited by default
 Real Equity, Tokenized Spot, TradFi Perps and CFD / Broker activity are not added together into a generic “TradFi Volume” number. Any future cross-layer index must explicitly define weighting and economic interpretation.
 
-### 4. Historical series start when measurement starts
-If an exchange does not expose adequate historical snapshots, DuoData begins collecting from the deployment date. The UI should show the actual available window instead of generating a visually complete but unverifiable history.
+### 4. Historical backfill must come from an identified historical source
+Official/public historical exchange endpoints may be used to reconstruct genuine past observations. If no reliable historical endpoint exists, DuoData starts collecting from the measurement date. Synthetic interpolation, fabricated backfills and zero-filling are prohibited.
 
 ### 5. API credential is not the same as internal data
 Some market-data APIs require a normal developer API key. DuoData labels these **KEY REQUIRED**, not **PRIVATE**. Private means the metric itself is not externally observable even with ordinary public/developer API access.
