@@ -3,6 +3,7 @@ import { getSnapshot } from '@/lib/market'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+export const preferredRegion = 'sin1'
 
 export async function GET() {
   const data = await getSnapshot()
