@@ -174,10 +174,11 @@ export const brokerageAccessScores:BrokerageAccessScore[]=realEquityVenues.map(v
     ownership:ownershipScore(v.ownership),
   }
   const score=Object.values(parts).reduce((a,b)=>a+b,0)
+  const band:BrokerageAccessScore['band']=score>=90?'Full-stack':score>=80?'Advanced':'Developing'
   return {
     venue:v.venue,
     score,
-    band:score>=90?'Full-stack':score>=80?'Advanced':'Developing',
+    band,
     ...parts,
   }
 }).sort((a,b)=>b.score-a.score)
