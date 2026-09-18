@@ -40,7 +40,7 @@ async function cachedJson<T>(url: string): Promise<T> {
   const r = await fetch(url, {
     next: { revalidate: 21600 },
     signal: AbortSignal.timeout(8_000),
-    headers: { Accept: 'application/json', 'User-Agent': 'DuoData-Research/0.1' },
+    headers: { Accept: 'application/json', 'User-Agent': 'DuoData-Research/0.2' },
   })
   if (!r.ok) throw new Error(`${new URL(url).hostname}: ${r.status} ${r.statusText}`)
   return r.json() as Promise<T>
@@ -70,21 +70,22 @@ function coreUnderlying(row: MarketRow): string | null {
 }
 
 function selectSeries(markets: MarketRow[]) {
+  // Fixed underlying basket: selection must not depend on TODAY's volume, OI or return.
+  // Deterministic symbol ordering is used only to de-duplicate equivalent venue/core contracts.
   const candidates = markets
     .filter(m => m.productLayer === 'TradFi Perps' && HIST_VENUES.has(m.venue))
     .map(m => ({ row: m, core: coreUnderlying(m) }))
     .filter((x): x is { row: MarketRow; core: string } => Boolean(x.core))
-    .sort((a, b) => (b.row.volume24hUsd ?? -1) - (a.row.volume24hUsd ?? -1))
+    .sort((a, b) =>
+      `${a.row.venue}|${a.core}|${a.row.symbol}`.localeCompare(
+        `${b.row.venue}|${b.core}|${b.row.symbol}`,
+      ),
+    )
 
   const chosen = new Map<string, { row: MarketRow; core: string }>()
-  const venueCounts = new Map<string, number>()
   for (const x of candidates) {
     const key = `${x.row.venue}|${x.core}`
-    if (chosen.has(key)) continue
-    const count = venueCounts.get(x.row.venue) || 0
-    if (count >= 10) continue
-    chosen.set(key, x)
-    venueCounts.set(x.row.venue, count + 1)
+    if (!chosen.has(key)) chosen.set(key, x)
   }
   return [...chosen.values()]
 }
@@ -142,8 +143,9 @@ function rollingMean(xs: number[], end: number, window: number) {
 }
 
 function activityAndBreadth(series: HistSeries[]) {
-  const momentum = new Map<number, number[]>()
-  const breadth = new Map<number, number[]>()
+  // First compute venue-level momentum, then collapse venues inside each underlying.
+  // This prevents an underlying listed on 3 venues from receiving 3x the weight.
+  const byDateUnderlying = new Map<string, number[]>()
 
   for (const s of series) {
     const vols = s.candles.map(c => c.turnover)
@@ -152,20 +154,34 @@ function activityAndBreadth(series: HistSeries[]) {
       const m30 = rollingMean(vols, i, 30)
       if (m7 === null || m30 === null || m30 <= 0) return
       const mom = (m7 / m30 - 1) * 100
-      if (!momentum.has(c.t)) momentum.set(c.t, [])
-      if (!breadth.has(c.t)) breadth.set(c.t, [])
-      momentum.get(c.t)!.push(mom)
-      breadth.get(c.t)!.push(m7 > m30 ? 1 : 0)
+      const key = `${c.t}|${s.underlying}`
+      if (!byDateUnderlying.has(key)) byDateUnderlying.set(key, [])
+      byDateUnderlying.get(key)!.push(mom)
     })
   }
 
-  const activityMomentum = [...momentum].sort((a,b)=>a[0]-b[0]).flatMap(([t, xs]) => {
-    const v = median(xs)
-    return v === null ? [] : [{ t, value: v }]
-  })
-  const participationBreadth = [...breadth].sort((a,b)=>a[0]-b[0]).flatMap(([t, xs]) =>
-    xs.length ? [{ t, value: xs.reduce((s,v)=>s+v,0) / xs.length * 100 }] : []
-  )
+  const daily = new Map<number, number[]>()
+  for (const [key, venueMoms] of byDateUnderlying) {
+    const underlyingMom = median(venueMoms)
+    if (underlyingMom === null) continue
+    const t = Number(key.split('|')[0])
+    if (!daily.has(t)) daily.set(t, [])
+    daily.get(t)!.push(underlyingMom)
+  }
+
+  const activityMomentum: ResearchPoint[] = []
+  const participationBreadth: ResearchPoint[] = []
+  for (const [t, underlyingMoms] of [...daily].sort((a,b)=>a[0]-b[0])) {
+    const v = median(underlyingMoms)
+    if (v !== null) activityMomentum.push({ t, value: v })
+    if (underlyingMoms.length) {
+      participationBreadth.push({
+        t,
+        value: underlyingMoms.filter(x => x > 0).length / underlyingMoms.length * 100,
+      })
+    }
+  }
+
   return { activityMomentum, participationBreadth }
 }
 
@@ -219,7 +235,7 @@ async function binanceFunding(symbol: string): Promise<Array<{t:number; rate:num
 }
 
 async function fundingStress(selected: Array<{row: MarketRow; core: string}>, errors: string[]): Promise<ResearchPoint[]> {
-  const binance = selected.filter(x => x.row.venue === 'Binance').slice(0, 10)
+  const binance = selected.filter(x => x.row.venue === 'Binance')
   const settled = await Promise.allSettled(binance.map(x => binanceFunding(x.row.symbol)))
   const daily = new Map<number, number[]>()
   settled.forEach((r, i) => {
