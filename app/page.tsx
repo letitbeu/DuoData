@@ -95,10 +95,10 @@ export default async function Home(){
 
         <div className="sectionBar" id="research"><div><h2>Duo Research Indices</h2></div><small>2026 YTD · public historical APIs · no synthetic backfill</small></div>
         <section className="chartGrid">
-          <ChartCard title="Duo TradFi Activity Momentum" context="2026 YTD" source={`Median (7D avg turnover / 30D avg turnover − 1) across active core contracts · ${researchScope}`} id="activity-momentum"><ResearchLineChart data={research.activityMomentum} unit="pct" zeroLine tone="blue"/></ChartCard>
-          <ChartCard title="Duo TradFi Participation Breadth" context="2026 YTD" source="Share of core venue-contracts whose 7D average turnover is above their own 30D average"><ResearchLineChart data={research.participationBreadth} unit="index" tone="violet"/></ChartCard>
+          <ChartCard title="Duo TradFi Activity Momentum" context="2026 YTD" source={`Median underlying momentum after cross-venue aggregation; fixed core basket, no current-volume selection · ${researchScope}`} id="activity-momentum"><ResearchLineChart data={research.activityMomentum} unit="pct" zeroLine tone="blue"/></ChartCard>
+          <ChartCard title="Duo TradFi Participation Breadth" context="2026 YTD" source="Share of fixed core underlyings with positive 7D-vs-30D turnover momentum; each underlying equal-weighted"><ResearchLineChart data={research.participationBreadth} unit="index" tone="violet"/></ChartCard>
           <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion"><ResearchLineChart data={research.priceDispersion} unit="bp" tone="orange"/></ChartCard>
-          <ChartCard title="Duo Funding Stress Index" context="2026 YTD" source="Rolling 60-day percentile of median absolute funding in the Binance Duo core TradFi basket · 80+ = elevated"><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
+          <ChartCard title="Duo Binance Funding Stress" context="2026 YTD" source="Rolling 60-day percentile of median absolute funding across the fixed Binance core TradFi basket · 80+ = elevated"><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
           <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only"><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
 
         </section>
