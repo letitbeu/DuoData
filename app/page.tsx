@@ -138,14 +138,14 @@ export default async function Home(){
           <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion"><ResearchLineChart data={research.priceDispersion} unit="bp" tone="orange"/></ChartCard>
           <ChartCard title="Duo Binance Funding Stress" context="2026 YTD" source="Rolling 60-day percentile of median absolute funding across the fixed Binance core TradFi basket · 80+ = elevated"><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
           <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only"><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
-          <ChartCard title="Live Cross-Venue Dislocation Radar" context="LIVE" source="Peak-to-peak last-price dispersion for the same canonical underlying across 2+ venues · >25% unit mismatches excluded"><HorizontalRanking data={liveDislocations} unit="bp" limit={10}/></ChartCard>
+          <ChartCard title="Live Cross-Venue Dislocation Radar" context="LIVE" source="Peak-to-peak last-price dispersion for the same canonical underlying across 2+ venues · >25% unit mismatches excluded"><HorizontalRanking data={liveDislocations} unit="bp" limit={10} labelWidth={220} maxLabelChars={36}/></ChartCard>
 
         </section>
 
         <div className="sectionBar" id="perps"><div><h2>TradFi Perps</h2></div><small>Stocks · ETFs · indices · commodities · FX · bonds · pre-IPO, kept within the derivatives layer</small></div>
         <section className="chartGrid" id="volume">
           <ChartCard title="24H TradFi Perps Volume by Exchange" context="ROLLING 24H" source="Exact venue-reported quote/notional turnover only · no spot/CFD/real-equity volume included" id="venue"><VenueBarChart data={venueVolume}/></ChartCard>
-          <ChartCard title="Largest TradFi Perp Markets by 24H Volume" context="TOP 10" source="Perpetual/futures contracts only"><HorizontalRanking data={topMarkets} limit={10}/></ChartCard>
+          <ChartCard title="Largest TradFi Perp Markets by 24H Volume" context="TOP 10" source="Perpetual/futures contracts only"><HorizontalRanking data={topMarkets} limit={10} labelWidth={190} maxLabelChars={30}/></ChartCard>
           <ChartCard title="TradFi Perps Volume by Asset Class" context="ROLLING 24H" source="Asset class is a second-level dimension inside the TradFi Perps product layer"><ProductDonut data={assetClasses}/></ChartCard>
           <ChartCard title="TradFi Perps Open Interest by Exchange" context="CURRENT" source="Perpetual/futures OI only · venue OI USD or normalized contract/base quantity" id="open-interest"><VenueBarChart data={venueOi}/></ChartCard>
         </section>
@@ -153,14 +153,14 @@ export default async function Home(){
         <div className="sectionBar"><div><h2>Market structure</h2></div><small>TradFi Perps only · live snapshot · no historical backfill</small></div>
         <section className="chartGrid">
           <ChartCard title="Most Extreme TradFi Perp Funding Rates" context="CURRENT" source="Perpetual products only; unsupported venues remain blank" id="funding"><FundingChart data={funding}/></ChartCard>
-          <ChartCard title="Tightest TradFi Perp Top-of-Book Spreads" context="TOP 10" source="Perpetual products only · best bid / ask, not full depth" id="liquidity"><HorizontalRanking data={tightSpreads} unit="bp" limit={10}/></ChartCard>
+          <ChartCard title="Tightest TradFi Perp Top-of-Book Spreads" context="TOP 10" source="Perpetual products only · best bid / ask, not full depth" id="liquidity"><HorizontalRanking data={tightSpreads} unit="bp" limit={10} labelWidth={190} maxLabelChars={30}/></ChartCard>
         </section>
 
         {tokenVenueVolume.length>0&&<>
           <div className="sectionBar" id="tokenized-spot"><div><h2>Tokenized Spot</h2></div><small>Separate product layer · tokenized stocks / ETFs only</small></div>
           <section className="chartGrid">
             <ChartCard title="24H Tokenized Spot Volume by Exchange" context="ROLLING 24H" source="Tokenized spot turnover only · no perpetual volume included"><VenueBarChart data={tokenVenueVolume}/></ChartCard>
-            <ChartCard title="Largest Tokenized Spot Markets by 24H Volume" context="TOP 10" source="Tokenized stocks / ETFs only"><HorizontalRanking data={tokenTopMarkets} limit={10}/></ChartCard>
+            <ChartCard title="Largest Tokenized Spot Markets by 24H Volume" context="TOP 10" source="Tokenized stocks / ETFs only"><HorizontalRanking data={tokenTopMarkets} limit={10} labelWidth={190} maxLabelChars={30}/></ChartCard>
           </section>
         </>}
 
