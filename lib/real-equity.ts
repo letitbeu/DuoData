@@ -43,11 +43,11 @@ export const realEquityVenues:RealEquityVenue[]=[
     funding:'USDC; BNB / USDT / U / USD1 can auto-convert',
     structure:'Direct listed stocks/ETFs; beneficial ownership through regulated brokerage / clearing rails',
     regions:'Eligible global markets; jurisdiction dependent',
-    transfer:'unverified',
+    transfer:'yes',
     lending:'yes',
     ownership:'yes',
     fundingAccess:'direct-crypto',
-    sourceNote:'Binance Stocks official product pages; FPSL available from Jun 2026',
+    sourceNote:'Binance Stocks official product pages; DTC transfer-in/out and FPSL verified in Aug 2026',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
