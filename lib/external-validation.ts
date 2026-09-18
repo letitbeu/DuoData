@@ -4,7 +4,7 @@ import type { PenetrationRow } from './penetration'
 export type ValidationStatus='PASS'|'WARN'|'REVIEW'|'REFERENCE'|'STALE'
 export type ValidationRow={
   venue:string
-  metric:'TradFi 24H Volume'|'TradFi OI'|'All Derivatives 24H Volume'|'All Derivatives OI'
+  metric:'TradFi 24H Volume'|'TradFi OI'|'TradFi Market Count'|'All Derivatives 24H Volume'|'All Derivatives OI'
   direct:number|null
   external:number
   deltaPct:number|null
@@ -18,10 +18,12 @@ const REVIEWED_AT='2026-09-18T02:30:00Z'
 // External values are audit snapshots only. They are never used in DuoData live totals.
 // DefiLlama values are used for TradFi/RWA perp subset checks.
 // CoinMarketCap values are used as a broad all-derivatives reference for TPR denominators.
-const DEFILLAMA:Record<string,{volume?:number;oi?:number;observedAt:string}>={
-  Binance:{volume:14.104e9,oi:4.158e9,observedAt:REVIEWED_AT},
-  OKX:{volume:2.458e9,oi:838.04e6,observedAt:REVIEWED_AT},
-  Bybit:{volume:709.48e6,oi:479.87e6,observedAt:REVIEWED_AT},
+const DEFILLAMA:Record<string,{volume?:number;oi?:number;markets?:number;observedAt:string}>={
+  Binance:{volume:14.104e9,oi:4.158e9,markets:157,observedAt:REVIEWED_AT},
+  OKX:{volume:2.458e9,oi:838.04e6,markets:156,observedAt:REVIEWED_AT},
+  Bybit:{volume:709.48e6,oi:479.87e6,markets:149,observedAt:REVIEWED_AT},
+  MEXC:{volume:3.794e9,oi:2.021e9,markets:371,observedAt:'2026-09-12T00:00:00Z'},
+  Gate:{volume:1.86e9,oi:1.442e9,markets:359,observedAt:'2026-09-11T00:00:00Z'},
 }
 
 const CMC:Record<string,{volume?:number;oi?:number;observedAt:string}>={
@@ -65,6 +67,11 @@ export function buildExternalValidation(markets:MarketRow[],penetration:Penetrat
     if(dl?.oi){
       const d=delta(directOi,dl.oi)
       rows.push({venue,metric:'TradFi OI',direct:directOi,external:dl.oi,deltaPct:d,source:'DefiLlama',observedAt:dl.observedAt,status:status(d,dl.observedAt)})
+    }
+    if(dl?.markets){
+      const directCount=xs.length
+      const d=delta(directCount,dl.markets)
+      rows.push({venue,metric:'TradFi Market Count',direct:directCount,external:dl.markets,deltaPct:d,source:'DefiLlama',observedAt:dl.observedAt,status:status(d,dl.observedAt)})
     }
 
     const cmc=CMC[venue]
