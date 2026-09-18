@@ -2,8 +2,9 @@ import { getSnapshot } from '@/lib/market'
 import { getResearchSeries } from '@/lib/research'
 import { getPenetrationRatios } from '@/lib/penetration'
 import { buildExternalValidation } from '@/lib/external-validation'
+import { buildRegimeModel } from '@/lib/regime'
 import { brokerageAccessBars, brokerageAccessScores, publishedCoverageBars, realEquityVenues } from '@/lib/real-equity'
-import { FundingChart, HorizontalRanking, ProductDonut, ResearchLineChart, VenueBarChart } from '@/components/Charts'
+import { FundingChart, HorizontalRanking, ProductDonut, RegimeQuadrantChart, ResearchLineChart, VenueBarChart } from '@/components/Charts'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -27,6 +28,7 @@ function ChartCard({title,context,children,source,id}:{title:string;context:stri
 export default async function Home(){
   const data=await getSnapshot()
   const [research,penetration]=await Promise.all([getResearchSeries(data.markets),getPenetrationRatios(data.markets)])
+  const regime=buildRegimeModel(research)
 
   const perps=data.markets.filter(m=>m.productLayer==='TradFi Perps')
   const tokenizedSpot=data.markets.filter(m=>m.productLayer==='Tokenized Spot')
@@ -138,6 +140,7 @@ export default async function Home(){
           <ChartCard title="Duo TradFi Participation Breadth" context="2026 YTD" source="Share of fixed core underlyings with positive 7D-vs-30D turnover momentum; each underlying equal-weighted"><ResearchLineChart data={research.participationBreadth} unit="index" tone="violet"/></ChartCard>
           <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion"><ResearchLineChart data={research.priceDispersion} unit="bp" tone="orange"/></ChartCard>
           <ChartCard title="Duo Binance Funding Stress" context="2026 YTD" source="Rolling 60-day percentile of median absolute funding across the fixed Binance core TradFi basket · 80+ = elevated"><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
+          <ChartCard title="Duo Market Regime Quadrant" context={regime.current?.regime?.toUpperCase()||'CURRENT'} source={`Four-factor regime model · X = Activity Momentum + Participation Breadth · Y = Funding Stress + Price Dispersion percentile · 7D EMA · 60-day trail`}><RegimeQuadrantChart data={regime.points}/></ChartCard>
           <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only"><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
           <ChartCard title="Live Cross-Venue Dislocation Radar" context="LIVE" source="Peak-to-peak last-price dispersion for the same canonical underlying across 2+ venues · >25% unit mismatches excluded"><HorizontalRanking data={liveDislocations} unit="bp" limit={10} labelWidth={220} maxLabelChars={36}/></ChartCard>
 
