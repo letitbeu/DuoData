@@ -39,6 +39,11 @@ async function denominator(venue:string):Promise<{value:number;source:string}|nu
     const rows=Array.isArray(x.data)?x.data:(x.data?[x.data]:[])
     return {value:sum(rows.map((r:any)=>n(r.amount24))),source:'MEXC contract amount24'}
   }
+  if(venue==='Gate'){
+    const x=await json<any[]>('https://api.gateio.ws/api/v4/futures/usdt/tickers')
+    const rows=Array.isArray(x)?x:[]
+    return {value:sum(rows.map((r:any)=>n(r.volume_24h_quote??r.volume_24h_settle))),source:'Gate USDT futures volume_24h_quote'}
+  }
   if(venue==='Coinbase INTX'){
     const x=await json<any[]>('https://api.international.coinbase.com/api/v1/instruments')
     const rows=Array.isArray(x)?x:[]
