@@ -3,6 +3,7 @@ import { getResearchSeries } from '@/lib/research'
 import { getPenetrationRatios } from '@/lib/penetration'
 import { buildExternalValidation } from '@/lib/external-validation'
 import { buildRegimeModel } from '@/lib/regime'
+import { buildResearchValidation } from '@/lib/research-validation'
 import { brokerageAccessBars, brokerageAccessScores, publishedCoverageBars, realEquityVenues } from '@/lib/real-equity'
 import { FundingChart, HorizontalRanking, ProductDonut, RegimeQuadrantChart, ResearchLineChart, VenueBarChart } from '@/components/Charts'
 
@@ -29,6 +30,7 @@ export default async function Home(){
   const data=await getSnapshot()
   const [research,penetration]=await Promise.all([getResearchSeries(data.markets),getPenetrationRatios(data.markets)])
   const regime=buildRegimeModel(research)
+  const researchValidation=buildResearchValidation(research)
 
   const perps=data.markets.filter(m=>m.productLayer==='TradFi Perps')
   const tokenizedSpot=data.markets.filter(m=>m.productLayer==='Tokenized Spot')
@@ -146,6 +148,17 @@ export default async function Home(){
 
         </section>
 
+        <section className="marketSection" id="research-validation">
+          <div className="sectionBar tableTitle"><div><h2>Duo Research Threshold Validation</h2></div><small>Walk-forward event study · 7D / 30D · Wilson 95% CI · no synthetic backfill</small></div>
+          <div className="tableWrap"><table><thead><tr><th>Indicator</th><th>Threshold</th><th>Hypothesis</th><th>7D</th><th>30D</th><th>Status</th></tr></thead><tbody>
+            {researchValidation.rows.map(v=>{
+              const fmt=(x:typeof v.horizon7)=>x.hitRate===null?'—':`${(x.hitRate*100).toFixed(0)}% · n=${x.n} · CI ${((x.ciLow||0)*100).toFixed(0)}–${((x.ciHigh||0)*100).toFixed(0)}%`
+              return <tr key={`${v.metric}-${v.threshold}`}><td><strong>{v.metric}</strong></td><td>{v.threshold}</td><td>{v.hypothesis}</td><td>{fmt(v.horizon7)}</td><td>{fmt(v.horizon30)}</td><td><span className="productTag">{v.status}</span></td></tr>
+            })}
+          </tbody></table></div>
+          <div className="chartFooter"><span>{researchValidation.methodology}</span><a href="#methodology">Methodology</a></div>
+        </section>
+
         <div className="sectionBar" id="real-equity"><div><h2>Real Equity Access</h2></div><small>Direct stock / ETF brokerage only · platform client volume remains private unless venue-published</small></div>
         <section className="chartGrid">
           <ChartCard title="Duo Brokerage Access Index" context="0–100" source="Composite score only. Internally: 65% Access + 35% Usability, where Usability = 100 − Friction. Access and Friction are methodology layers, not standalone headline indices."><VenueBarChart data={brokerageAccessBars} unit="index" maxValue={100}/></ChartCard>
@@ -216,7 +229,7 @@ export default async function Home(){
           </details>
         </section>
 
-        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V1.7 · Integrated Brokerage Access Index · Multi-venue Real Equity + Tokenized Spot + Perps</span></footer>
+        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V1.8 · Threshold-validated Duo Research · Integrated Brokerage Access Index · Multi-venue Real Equity + Tokenized Spot + Perps</span></footer>
       </main>
     </div>
   </div>
