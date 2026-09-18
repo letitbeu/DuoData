@@ -1,5 +1,6 @@
 import { getSnapshot } from '@/lib/market'
 import { getResearchSeries } from '@/lib/research'
+import { getPenetrationRatios } from '@/lib/penetration'
 import { FundingChart, HorizontalRanking, ProductDonut, ResearchLineChart, VenueBarChart } from '@/components/Charts'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ function ChartCard({title,context,children,source,id}:{title:string;context:stri
 
 export default async function Home(){
   const data=await getSnapshot()
-  const research=await getResearchSeries(data.markets)
+  const [research,penetration]=await Promise.all([getResearchSeries(data.markets),getPenetrationRatios(data.markets)])
 
   const perps=data.markets.filter(m=>m.productLayer==='TradFi Perps')
   const tokenizedSpot=data.markets.filter(m=>m.productLayer==='Tokenized Spot')
@@ -60,6 +61,7 @@ export default async function Home(){
   const coverageUnavailable=data.coverage.filter(c=>c.status==='PRIVATE'||c.status==='UNAVAILABLE').length
   const asOf=new Date(data.asOf).toLocaleString('en-GB',{timeZone:'Asia/Singapore',hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})
   const researchScope=`${research.meta.candleSeries} historical venue-instrument series · ${research.meta.venues.join(' / ')||'public APIs'}`
+  const penetrationBars=penetration.rows.map(x=>({label:x.venue,value:x.ratioPct}))
 
   return <div className="appShell">
     <header className="globalHeader">
@@ -97,6 +99,8 @@ export default async function Home(){
           <ChartCard title="Duo TradFi Participation Breadth" context="2026 YTD" source="Share of core venue-contracts whose 7D average turnover is above their own 30D average"><ResearchLineChart data={research.participationBreadth} unit="index" tone="violet"/></ChartCard>
           <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion"><ResearchLineChart data={research.priceDispersion} unit="bp" tone="orange"/></ChartCard>
           <ChartCard title="Duo Funding Stress Index" context="2026 YTD" source="Rolling 60-day percentile of median absolute funding in the Binance Duo core TradFi basket · 80+ = elevated"><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
+          <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only"><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
+
         </section>
 
         <div className="sectionBar" id="perps"><div><h2>TradFi Perps</h2></div><small>Stocks · ETFs · indices · commodities · FX · bonds · pre-IPO, kept within the derivatives layer</small></div>
