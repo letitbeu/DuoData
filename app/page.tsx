@@ -62,6 +62,20 @@ export default async function Home(){
   const asOf=new Date(data.asOf).toLocaleString('en-GB',{timeZone:'Asia/Singapore',hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})
   const researchScope=`${research.meta.candleSeries} historical venue-instrument series · ${research.meta.venues.join(' / ')||'public APIs'}`
   const penetrationBars=penetration.rows.map(x=>({label:x.venue,value:x.ratioPct}))
+  const qualityRows=perpsVenues.map(venue=>{
+    const xs=perps.filter(m=>m.venue===venue)
+    const total=xs.length
+    const pctKnown=(fn:(m:typeof xs[number])=>boolean)=>total?Math.round(xs.filter(fn).length/total*100):0
+    return {
+      venue,
+      instruments:total,
+      volume:pctKnown(m=>m.volume24hUsd!==null),
+      oi:pctKnown(m=>m.openInterestUsd!==null),
+      funding:pctKnown(m=>m.fundingRate!==null),
+      spread:pctKnown(m=>m.bid!==null&&m.ask!==null&&m.bid>0&&m.ask>0),
+      classified:pctKnown(m=>Boolean(m.assetClass)&&!['RWA (unclassified)','Unclassified'].includes(m.assetClass)),
+    }
+  }).sort((a,b)=>b.instruments-a.instruments)
 
   return <div className="appShell">
     <header className="globalHeader">
@@ -136,6 +150,10 @@ export default async function Home(){
               <div><h2>Coverage & methodology</h2><p style={{marginBottom:0}}>Four-layer product taxonomy, public-data coverage, source limitations and unavailable metrics.</p></div>
               <div className="methodStat"><strong>{coverageLive}/{data.coverage.length}</strong><span>metrics live · click to expand</span></div>
             </summary>
+            <div className="qualityMatrix" style={{marginTop:16}}>
+              <div className="qualityHead"><span>Venue</span><span>Instruments</span><span>Volume</span><span>OI</span><span>Funding</span><span>Spread</span><span>Classified</span></div>
+              {qualityRows.map(q=><div className="qualityRow" key={q.venue}><strong>{q.venue}</strong><span>{q.instruments}</span><span>{q.volume}%</span><span>{q.oi}%</span><span>{q.funding}%</span><span>{q.spread}%</span><span>{q.classified}%</span></div>)}
+            </div>
             <div className="coverageTable" style={{marginTop:16}}><div className="coverageRow coverageHeader"><span>Metric</span><span>Status</span><span>Source / limitation</span></div>{data.coverage.map(c=><div className="coverageRow" key={c.metric}><strong>{c.metric}</strong><span><i className={`statusDot ${c.status.toLowerCase()}`}/>{c.status}</span><p>{c.note}<small>{c.source}</small></p></div>)}</div>
           </details>
         </section>
