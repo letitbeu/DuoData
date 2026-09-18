@@ -1,3 +1,5 @@
+export type TransferSupport='bidirectional'|'inbound'|'unsupported'|'unverified'
+
 export type RealEquityVenue={
   venue:string
   securitiesMin:number|null
@@ -8,10 +10,20 @@ export type RealEquityVenue={
   funding:string
   structure:string
   regions:string
-  transfer:'yes'|'no'|'unverified'
+  transfer:TransferSupport
   lending:'yes'|'no'|'unverified'
   ownership:'yes'|'partial'|'unverified'
   fundingAccess:'direct-crypto'|'stablecoin'|'integrated'|'cash-only'
+  friction:{
+    geography:number
+    transfer:number
+    funding:number
+    hours:number
+    entry:number
+    account:number
+    uncertainty:number
+    note:string
+  }
   sourceNote:string
   asOf:string
 }
@@ -19,15 +31,20 @@ export type RealEquityVenue={
 export type BrokerageAccessScore={
   venue:string
   score:number
+  accessScore:number
+  frictionScore:number
+  usabilityScore:number
   band:'Full-stack'|'Advanced'|'Developing'
-  coverage:number
-  hours:number
-  fractional:number
-  entry:number
-  funding:number
-  transfer:number
-  lending:number
-  ownership:number
+  access:{
+    coverage:number
+    hours:number
+    fractional:number
+    funding:number
+    transfer:number
+    lending:number
+    ownership:number
+  }
+  friction:RealEquityVenue['friction']
 }
 
 export const REAL_EQUITY_AS_OF='2026-09-18'
@@ -43,11 +60,15 @@ export const realEquityVenues:RealEquityVenue[]=[
     funding:'USDC; BNB / USDT / U / USD1 can auto-convert',
     structure:'Direct listed stocks/ETFs; beneficial ownership through regulated brokerage / clearing rails',
     regions:'Eligible global markets; jurisdiction dependent',
-    transfer:'yes',
+    transfer:'bidirectional',
     lending:'yes',
     ownership:'yes',
     fundingAccess:'direct-crypto',
-    sourceNote:'Binance Stocks official product pages; DTC transfer-in/out and FPSL verified in Aug 2026',
+    friction:{
+      geography:8,transfer:10,funding:2,hours:4,entry:3,account:5,uncertainty:2,
+      note:'Broad access, but jurisdiction limits remain. DTC transfers are manual/batched; transfer-in may take 14+ business days and transfer-out requests are batched weekly.',
+    },
+    sourceNote:'Binance Stocks official pages; DTC transfer-in/out and FPSL verified Aug 2026',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -60,11 +81,15 @@ export const realEquityVenues:RealEquityVenue[]=[
     funding:'USDC Stock+ sub-account; crypto can be converted to USDC',
     structure:'Real U.S. securities held through compliant brokers; full shareholder rights',
     regions:'Eligible markets; jurisdiction dependent',
-    transfer:'yes',
+    transfer:'inbound',
     lending:'unverified',
     ownership:'yes',
     fundingAccess:'stablecoin',
-    sourceNote:'Bitget Stock+ official product/support pages; ACATS-in and shareholder rights verified',
+    friction:{
+      geography:10,transfer:8,funding:3,hours:3,entry:5,account:5,uncertainty:5,
+      note:'Inbound stock transfer is verified and typically takes several business days; outbound transfer and securities lending are not counted until publicly verified.',
+    },
+    sourceNote:'Bitget Stock+ official pages; inbound stock transfer, 24/5 and shareholder rights verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -77,11 +102,15 @@ export const realEquityVenues:RealEquityVenue[]=[
     funding:'Brokerage cash rails; stocks and crypto managed in one app',
     structure:'Kraken Securities LLC brokerage; direct securities, separate from xStocks',
     regions:'Eligible U.S. states',
-    transfer:'yes',
+    transfer:'bidirectional',
     lending:'yes',
     ownership:'yes',
     fundingAccess:'integrated',
-    sourceNote:'Kraken Stocks official pages; ACATS and Fully Paid Stock Lending verified',
+    friction:{
+      geography:20,transfer:15,funding:8,hours:3,entry:5,account:5,uncertainty:2,
+      note:'Real-equity brokerage is geographically narrow. ACATS-out costs $100; fractional shares cannot be transferred and transfers generally take several business days.',
+    },
+    sourceNote:'Kraken Stocks official pages; ACATS, $100 transfer-out fee and Fully Paid Stock Lending verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -94,11 +123,15 @@ export const realEquityVenues:RealEquityVenue[]=[
     funding:'USD / USDC from one Coinbase account',
     structure:'Coinbase Capital Markets brokerage; Apex execution / clearing / custody',
     regions:'U.S. and UK eligible customers',
-    transfer:'yes',
+    transfer:'bidirectional',
     lending:'unverified',
     ownership:'yes',
     fundingAccess:'stablecoin',
-    sourceNote:'Coinbase Stocks / CCM official pages; ACATS in/out verified',
+    friction:{
+      geography:12,transfer:5,funding:2,hours:5,entry:1,account:4,uncertainty:4,
+      note:'Low funding and entry friction, but stock access remains region-limited and 24/5 availability is symbol-dependent. Securities lending is not scored without public verification.',
+    },
+    sourceNote:'Coinbase Stocks / CCM official pages; 24/5, fractional trading, USD/USDC funding and ACATS verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -111,11 +144,15 @@ export const realEquityVenues:RealEquityVenue[]=[
     funding:'Bank / card / Apple Pay / Google Pay / crypto',
     structure:'Foris Capital US LLC broker-dealer; FINRA/SIPC',
     regions:'U.S. customers currently',
-    transfer:'yes',
+    transfer:'bidirectional',
     lending:'yes',
     ownership:'yes',
     fundingAccess:'direct-crypto',
-    sourceNote:'Crypto.com Stocks official pages; ACATS, 24/5 and securities lending verified',
+    friction:{
+      geography:22,transfer:18,funding:4,hours:6,entry:0,account:5,uncertainty:1,
+      note:'Feature coverage is broad, but stocks are U.S.-only and outbound ACATS costs $100. Crypto purchases convert into brokerage cash before securities execution.',
+    },
+    sourceNote:'Crypto.com Stocks official pages; U.S.-only access, $100 transfer-out fee, 24/5 and securities lending verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -127,63 +164,65 @@ export const realEquityVenues:RealEquityVenue[]=[
     minOrder:'Not publicly standardized',
     funding:'Brokerage funding inside Gemini app',
     structure:'Gemini Galactic Markets introducing broker; Apex Clearing custodian / clearing',
-    regions:'Eligible U.S. residents',
-    transfer:'no',
+    regions:'Eligible U.S. residents except published exclusions',
+    transfer:'unsupported',
     lending:'unverified',
     ownership:'yes',
     fundingAccess:'integrated',
-    sourceNote:'Gemini Stocks official pages; 24/5 live, transfers not supported at current published status',
+    friction:{
+      geography:22,transfer:20,funding:8,hours:8,entry:6,account:5,uncertainty:6,
+      note:'U.S.-only rollout with exclusions. Stock transfers are not supported at the current published status; 24/5 is limited to eligible securities and limit orders.',
+    },
+    sourceNote:'Gemini Stocks official pages; 24/5 verified, stock transfers currently unsupported',
     asOf:REAL_EQUITY_AS_OF,
   },
 ]
 
 const coverageScore=(v:RealEquityVenue)=>{
   const n=v.securitiesMin
-  if(n===null)return 15
-  if(n>=10000)return 25
-  if(n>=7000)return 22
-  if(n>=4000)return 18
-  if(n>=2000)return 14
+  if(n===null)return 16
+  if(n>=10000)return 30
+  if(n>=7000)return 26
+  if(n>=4000)return 20
+  if(n>=2000)return 15
   return 8
-}
-const entryScore=(v:RealEquityVenue)=>{
-  if(v.venue==='Coinbase')return 10
-  if(v.venue==='Crypto.com')return 9
-  if(v.venue==='Binance')return 8
-  if(v.venue==='Bitget')return 6
-  return 4
 }
 const fundingScore=(v:RealEquityVenue)=>({
   'direct-crypto':15,
   'stablecoin':15,
-  'integrated':8,
+  'integrated':10,
   'cash-only':4,
 }[v.fundingAccess])
+const transferScore=(x:TransferSupport)=>x==='bidirectional'?15:x==='inbound'?8:0
 const supportScore=(x:'yes'|'no'|'unverified',points:number)=>x==='yes'?points:0
 const ownershipScore=(x:'yes'|'partial'|'unverified')=>x==='yes'?10:x==='partial'?5:0
 
 export const brokerageAccessScores:BrokerageAccessScore[]=realEquityVenues.map(v=>{
-  const parts={
+  const access={
     coverage:coverageScore(v),
     hours:v.trading24x5?15:0,
     fractional:v.fractional?10:0,
-    entry:entryScore(v),
     funding:fundingScore(v),
-    transfer:supportScore(v.transfer,10),
+    transfer:transferScore(v.transfer),
     lending:supportScore(v.lending,5),
     ownership:ownershipScore(v.ownership),
   }
-  const score=Object.values(parts).reduce((a,b)=>a+b,0)
-  const band:BrokerageAccessScore['band']=score>=90?'Full-stack':score>=80?'Advanced':'Developing'
-  return {
-    venue:v.venue,
-    score,
-    band,
-    ...parts,
-  }
+  const accessScore=Object.values(access).reduce((a,b)=>a+b,0)
+  const frictionScore=Math.min(100,Object.entries(v.friction)
+    .filter(([k])=>k!=='note')
+    .reduce((s,[,n])=>s+Number(n),0))
+  const usabilityScore=100-frictionScore
+  const score=Math.round(accessScore*.65+usabilityScore*.35)
+  const band:BrokerageAccessScore['band']=score>=85?'Full-stack':score>=70?'Advanced':'Developing'
+  return {venue:v.venue,score,accessScore,frictionScore,usabilityScore,band,access,friction:v.friction}
 }).sort((a,b)=>b.score-a.score)
 
 export const brokerageAccessBars=brokerageAccessScores.map(x=>({label:x.venue,value:x.score}))
+export const accessScoreBars=brokerageAccessScores.map(x=>({label:x.venue,value:x.accessScore}))
+export const frictionScoreBars=brokerageAccessScores
+  .slice()
+  .sort((a,b)=>a.frictionScore-b.frictionScore)
+  .map(x=>({label:x.venue,value:x.frictionScore}))
 
 export const publishedCoverageBars=realEquityVenues
   .filter((x):x is RealEquityVenue & {securitiesMin:number}=>x.securitiesMin!==null)
