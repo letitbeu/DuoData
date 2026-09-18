@@ -128,7 +128,14 @@ export default async function Home(){
           <span>DATA MODULES</span>
           <a className="disabled">Market Overview <em>soon</em></a>
           <a className="disabled">Crypto Markets <em>soon</em></a>
-          <a className="selected" href="#overview">TradFi on CEX</a>
+          <details className="moduleDisclosure">
+            <summary className="moduleSummary">TradFi on CEX <i aria-hidden="true">⌄</i></summary>
+            <div className="moduleSubnav">
+              <div className="navGroup moduleInner"><span>TRADFI MODULE</span><a href="#overview">Overview</a><a href="#real-equity">Real Equity</a><a href="#perps">TradFi Perps</a>{tokenizedSpot.length>0&&<a href="#tokenized-spot">Tokenized Spot</a>}<a className="disabled">CFD / Broker <em>pending</em></a></div>
+              <div className="navGroup moduleInner"><span>RESEARCH</span><a href="#research">Duo Research Indices</a><a href="#activity-momentum">Activity Momentum</a><a href="#price-dispersion">Price Dispersion</a></div>
+              <div className="navGroup moduleInner"><span>MARKET STRUCTURE</span><a href="#volume">Volume</a><a href="#open-interest">Open Interest</a><a href="#funding">Funding</a><a href="#liquidity">Liquidity</a><a href="#methodology">Data Coverage</a></div>
+            </div>
+          </details>
           <a className="disabled">Stablecoins <em>soon</em></a>
           <a className="disabled">Tokenized Assets / RWA <em>soon</em></a>
           <a className="disabled">On-chain <em>soon</em></a>
@@ -137,9 +144,6 @@ export default async function Home(){
           <a className="disabled">Macro & Liquidity <em>soon</em></a>
           <a className="disabled">Prediction Markets <em>soon</em></a>
         </div>
-        <div className="navGroup"><span>TRADFI MODULE</span><a href="#overview">Overview</a><a href="#real-equity">Real Equity</a><a href="#perps">TradFi Perps</a>{tokenizedSpot.length>0&&<a href="#tokenized-spot">Tokenized Spot</a>}<a className="disabled">CFD / Broker <em>pending</em></a></div>
-        <div className="navGroup"><span>RESEARCH</span><a href="#research">Duo Research Indices</a><a href="#activity-momentum">Activity Momentum</a><a href="#price-dispersion">Price Dispersion</a></div>
-        <div className="navGroup"><span>MARKET STRUCTURE</span><a href="#volume">Volume</a><a href="#open-interest">Open Interest</a><a href="#funding">Funding</a><a href="#liquidity">Liquidity</a><a href="#methodology">Data Coverage</a></div>
         <div className="coverageMini"><span>TradFi mapped universe</span><strong>{data.liveVenues} venues · {data.liveInstruments} instruments</strong><small>This is one DuoData module. Future modules will keep their own taxonomy, coverage and methodology.</small></div>
       </aside>
 
