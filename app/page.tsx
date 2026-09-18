@@ -11,6 +11,7 @@ const price=(n:number)=>n>=1000?n.toLocaleString('en-US',{maximumFractionDigits:
 const pct=(n:number|null)=>n===null?'—':`${n>=0?'+':''}${(n*100).toFixed(3)}%`
 const spreadBp=(bid:number|null,ask:number|null)=>bid&&ask&&bid>0&&ask>0?((ask-bid)/((ask+bid)/2))*10000:null
 const sumKnown=(xs:(number|null)[])=>{const known=xs.filter((v):v is number=>v!==null);return known.length?known.reduce((s,v)=>s+v,0):null}
+const canonicalUnderlying=(raw:string)=>String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/(USDT|USDC|USD1|USD)$/,'').replace(/STOCK$/,'')
 
 function ChartCard({title,context,children,source,id}:{title:string;context:string;children:React.ReactNode;source:string;id?:string}){
   return <article className="chartCard" id={id}>
@@ -62,6 +63,26 @@ export default async function Home(){
   const asOf=new Date(data.asOf).toLocaleString('en-GB',{timeZone:'Asia/Singapore',hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})
   const researchScope=`${research.meta.candleSeries} historical venue-instrument series · ${research.meta.venues.join(' / ')||'public APIs'}`
   const penetrationBars=penetration.rows.map(x=>({label:x.venue,value:x.ratioPct}))
+  const dislocationGroups=new Map<string,typeof perps>()
+  perps.filter(m=>m.lastPrice>0).forEach(m=>{
+    const key=canonicalUnderlying(m.underlying)
+    if(!key)return
+    if(!dislocationGroups.has(key))dislocationGroups.set(key,[])
+    dislocationGroups.get(key)!.push(m)
+  })
+  const liveDislocations=[...dislocationGroups.entries()].flatMap(([underlying,rows])=>{
+    const byVenue=new Map<string,typeof rows[number]>()
+    for(const r of rows){if(!byVenue.has(r.venue))byVenue.set(r.venue,r)}
+    const xs=[...byVenue.values()]
+    if(xs.length<2)return []
+    const prices=xs.map(x=>x.lastPrice).filter(x=>Number.isFinite(x)&&x>0)
+    if(prices.length<2)return []
+    const min=Math.min(...prices),max=Math.max(...prices)
+    if(max/min>1.25)return []
+    const low=xs.find(x=>x.lastPrice===min)!,high=xs.find(x=>x.lastPrice===max)!
+    const mid=(min+max)/2
+    return [{label:`${underlying} · ${low.venue} ↔ ${high.venue}`,value:(max-min)/mid*10000}]
+  }).sort((a,b)=>b.value-a.value).slice(0,10)
   const qualityRows=perpsVenues.map(venue=>{
     const xs=perps.filter(m=>m.venue===venue)
     const total=xs.length
@@ -114,6 +135,7 @@ export default async function Home(){
           <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion"><ResearchLineChart data={research.priceDispersion} unit="bp" tone="orange"/></ChartCard>
           <ChartCard title="Duo Binance Funding Stress" context="2026 YTD" source="Rolling 60-day percentile of median absolute funding across the fixed Binance core TradFi basket · 80+ = elevated"><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
           <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only"><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
+          <ChartCard title="Live Cross-Venue Dislocation Radar" context="LIVE" source="Peak-to-peak last-price dispersion for the same canonical underlying across 2+ venues · >25% unit mismatches excluded"><HorizontalRanking data={liveDislocations} unit="bp" limit={10}/></ChartCard>
 
         </section>
 
