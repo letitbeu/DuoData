@@ -6,8 +6,8 @@ type Row={label:string;value:number;venue?:string}
 type TimeRow={t:number;value:number}
 const COLORS=['#2563EB','#F97316','#10B981','#7C3AED','#06B6D4','#F43F5E','#F59E0B','#6366F1']
 const VENUE_COLORS:Record<string,string>={
-  Binance:'#F59E0B', Bitget:'#14B8A6', Bybit:'#F97316', 'Coinbase INTX':'#2563EB',
-  Kraken:'#7C3AED', OKX:'#111827', MEXC:'#3B82F6', Gate:'#EF4444'
+  Binance:'#F59E0B', Bitget:'#14B8A6', Bybit:'#F97316', 'Coinbase INTX':'#2563EB', Coinbase:'#2563EB',
+  Kraken:'#7C3AED', OKX:'#111827', MEXC:'#3B82F6', Gate:'#EF4444', 'Crypto.com':'#1199FA', Gemini:'#00A86B'
 }
 const RESEARCH_COLORS={blue:'#2563EB',violet:'#7C3AED',orange:'#F97316',rose:'#F43F5E',cyan:'#06B6D4',emerald:'#10B981'} as const
 const venueColor=(label:string)=>VENUE_COLORS[label]||'#64748B'
