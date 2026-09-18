@@ -8,8 +8,26 @@ export type RealEquityVenue={
   funding:string
   structure:string
   regions:string
+  transfer:'yes'|'no'|'unverified'
+  lending:'yes'|'no'|'unverified'
+  ownership:'yes'|'partial'|'unverified'
+  fundingAccess:'direct-crypto'|'stablecoin'|'integrated'|'cash-only'
   sourceNote:string
   asOf:string
+}
+
+export type BrokerageAccessScore={
+  venue:string
+  score:number
+  band:'Full-stack'|'Advanced'|'Developing'
+  coverage:number
+  hours:number
+  fractional:number
+  entry:number
+  funding:number
+  transfer:number
+  lending:number
+  ownership:number
 }
 
 export const REAL_EQUITY_AS_OF='2026-09-18'
@@ -22,10 +40,14 @@ export const realEquityVenues:RealEquityVenue[]=[
     trading24x5:true,
     fractional:true,
     minOrder:'$5',
-    funding:'USDC; supported crypto can auto-convert',
-    structure:'Direct listed stocks/ETFs via external regulated brokerage / clearing rails',
+    funding:'USDC; BNB / USDT / U / USD1 can auto-convert',
+    structure:'Direct listed stocks/ETFs; beneficial ownership through regulated brokerage / clearing rails',
     regions:'Eligible global markets; jurisdiction dependent',
-    sourceNote:'Binance Stocks official product pages, Jun–Aug 2026',
+    transfer:'unverified',
+    lending:'yes',
+    ownership:'yes',
+    fundingAccess:'direct-crypto',
+    sourceNote:'Binance Stocks official product pages; FPSL available from Jun 2026',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -35,10 +57,14 @@ export const realEquityVenues:RealEquityVenue[]=[
     trading24x5:true,
     fractional:true,
     minOrder:'~$10 / 0.0001 share',
-    funding:'USDC Stock+ sub-account',
-    structure:'Real U.S. securities held through compliant broker; shareholder rights',
+    funding:'USDC Stock+ sub-account; crypto can be converted to USDC',
+    structure:'Real U.S. securities held through compliant brokers; full shareholder rights',
     regions:'Eligible markets; jurisdiction dependent',
-    sourceNote:'Bitget Stock+ official product/support pages, 2026',
+    transfer:'yes',
+    lending:'unverified',
+    ownership:'yes',
+    fundingAccess:'stablecoin',
+    sourceNote:'Bitget Stock+ official product/support pages; ACATS-in and shareholder rights verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -48,10 +74,14 @@ export const realEquityVenues:RealEquityVenue[]=[
     trading24x5:true,
     fractional:true,
     minOrder:'Varies by symbol',
-    funding:'Brokerage cash rails; crypto and equities managed in one app',
-    structure:'Regulated stock/ETF brokerage offering; direct securities, separate from xStocks',
-    regions:'Eligible U.S. states and supported EEA markets',
-    sourceNote:'Kraken Stocks / equities support pages, Aug 2026',
+    funding:'Brokerage cash rails; stocks and crypto managed in one app',
+    structure:'Kraken Securities LLC brokerage; direct securities, separate from xStocks',
+    regions:'Eligible U.S. states',
+    transfer:'yes',
+    lending:'yes',
+    ownership:'yes',
+    fundingAccess:'integrated',
+    sourceNote:'Kraken Stocks official pages; ACATS and Fully Paid Stock Lending verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -61,10 +91,14 @@ export const realEquityVenues:RealEquityVenue[]=[
     trading24x5:true,
     fractional:true,
     minOrder:'$1 / £1',
-    funding:'USD / USDC',
-    structure:'Coinbase Capital Markets brokerage; real U.S.-listed securities',
+    funding:'USD / USDC from one Coinbase account',
+    structure:'Coinbase Capital Markets brokerage; Apex execution / clearing / custody',
     regions:'U.S. and UK eligible customers',
-    sourceNote:'Coinbase Stocks official pages, 2026; UK page states nearly 4,000 stocks',
+    transfer:'yes',
+    lending:'unverified',
+    ownership:'yes',
+    fundingAccess:'stablecoin',
+    sourceNote:'Coinbase Stocks / CCM official pages; ACATS in/out verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -73,11 +107,15 @@ export const realEquityVenues:RealEquityVenue[]=[
     securitiesLabel:'12,000+',
     trading24x5:true,
     fractional:true,
-    minOrder:'$1',
-    funding:'Stocks Cash; supported wallet funds can be converted for purchases',
+    minOrder:'No minimum deposit; fractional available',
+    funding:'Bank / card / Apple Pay / Google Pay / crypto',
     structure:'Foris Capital US LLC broker-dealer; FINRA/SIPC',
     regions:'U.S. customers currently',
-    sourceNote:'Crypto.com Stocks official help/product pages, updated 2026',
+    transfer:'yes',
+    lending:'yes',
+    ownership:'yes',
+    fundingAccess:'direct-crypto',
+    sourceNote:'Crypto.com Stocks official pages; ACATS, 24/5 and securities lending verified',
     asOf:REAL_EQUITY_AS_OF,
   },
   {
@@ -88,12 +126,63 @@ export const realEquityVenues:RealEquityVenue[]=[
     fractional:true,
     minOrder:'Not publicly standardized',
     funding:'Brokerage funding inside Gemini app',
-    structure:'Gemini Galactic Markets introducing broker; Apex Clearing custodian/clearing',
+    structure:'Gemini Galactic Markets introducing broker; Apex Clearing custodian / clearing',
     regions:'Eligible U.S. residents',
-    sourceNote:'Gemini Stocks official page / Jul–Aug 2026 announcements',
+    transfer:'no',
+    lending:'unverified',
+    ownership:'yes',
+    fundingAccess:'integrated',
+    sourceNote:'Gemini Stocks official pages; 24/5 live, transfers not supported at current published status',
     asOf:REAL_EQUITY_AS_OF,
   },
 ]
+
+const coverageScore=(v:RealEquityVenue)=>{
+  const n=v.securitiesMin
+  if(n===null)return 15
+  if(n>=10000)return 25
+  if(n>=7000)return 22
+  if(n>=4000)return 18
+  if(n>=2000)return 14
+  return 8
+}
+const entryScore=(v:RealEquityVenue)=>{
+  if(v.venue==='Coinbase')return 10
+  if(v.venue==='Crypto.com')return 9
+  if(v.venue==='Binance')return 8
+  if(v.venue==='Bitget')return 6
+  return 4
+}
+const fundingScore=(v:RealEquityVenue)=>({
+  'direct-crypto':15,
+  'stablecoin':15,
+  'integrated':8,
+  'cash-only':4,
+}[v.fundingAccess])
+const supportScore=(x:'yes'|'no'|'unverified',points:number)=>x==='yes'?points:0
+const ownershipScore=(x:'yes'|'partial'|'unverified')=>x==='yes'?10:x==='partial'?5:0
+
+export const brokerageAccessScores:BrokerageAccessScore[]=realEquityVenues.map(v=>{
+  const parts={
+    coverage:coverageScore(v),
+    hours:v.trading24x5?15:0,
+    fractional:v.fractional?10:0,
+    entry:entryScore(v),
+    funding:fundingScore(v),
+    transfer:supportScore(v.transfer,10),
+    lending:supportScore(v.lending,5),
+    ownership:ownershipScore(v.ownership),
+  }
+  const score=Object.values(parts).reduce((a,b)=>a+b,0)
+  return {
+    venue:v.venue,
+    score,
+    band:score>=90?'Full-stack':score>=80?'Advanced':'Developing',
+    ...parts,
+  }
+}).sort((a,b)=>b.score-a.score)
+
+export const brokerageAccessBars=brokerageAccessScores.map(x=>({label:x.venue,value:x.score}))
 
 export const publishedCoverageBars=realEquityVenues
   .filter((x):x is RealEquityVenue & {securitiesMin:number}=>x.securitiesMin!==null)
