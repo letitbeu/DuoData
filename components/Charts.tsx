@@ -1,6 +1,6 @@
 'use client'
 
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 type Row={label:string;value:number;venue?:string}
 type TimeRow={t:number;value:number}
@@ -38,5 +38,6 @@ export function ResearchLineChart({data,unit,zeroLine=false,stressLine=false,ton
   let min=Math.min(...values),max=Math.max(...values)
   if(unit==='index'){min=0;max=100}
   else {const pad=Math.max((max-min)*.14,unit==='bp'?1:3);min-=pad;max+=pad;if(zeroLine){min=Math.min(min,0);max=Math.max(max,0)}}
-  return <div className="chartBox"><ResponsiveContainer width="100%" height="100%"><LineChart data={data} margin={{top:12,right:14,left:2,bottom:4}}><CartesianGrid vertical={false} stroke="#edf0f2"/><XAxis type="number" dataKey="t" domain={[start,end]} scale="time" axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#8b929a'}} tickFormatter={month} tickCount={9}/><YAxis domain={[min,max]} axisLine={false} tickLine={false} width={62} tick={{fontSize:10,fill:'#8b929a'}} tickFormatter={(v)=>researchValue(Number(v),unit)}/>{zeroLine&&<ReferenceLine y={0} stroke="#b8bec5" strokeDasharray="3 3"/>}{stressLine&&<ReferenceLine y={80} stroke="#b8bec5" strokeDasharray="3 3"/>}<Tooltip content={<ResearchTip unit={unit}/>} cursor={{stroke:'#d9dee3'}}/><Line type="monotone" dataKey="value" stroke={RESEARCH_COLORS[tone]} strokeWidth={2.4} dot={false} activeDot={{r:4,strokeWidth:2,fill:'#fff',stroke:RESEARCH_COLORS[tone]}} isAnimationActive={false}/></LineChart></ResponsiveContainer></div>
+  const gradId=`duo-${tone}-area`
+  return <div className="chartBox"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{top:12,right:14,left:2,bottom:4}}><defs><linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={RESEARCH_COLORS[tone]} stopOpacity={0.24}/><stop offset="75%" stopColor={RESEARCH_COLORS[tone]} stopOpacity={0.05}/><stop offset="100%" stopColor={RESEARCH_COLORS[tone]} stopOpacity={0}/></linearGradient></defs><CartesianGrid vertical={false} stroke="#edf0f2"/><XAxis type="number" dataKey="t" domain={[start,end]} scale="time" axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#8b929a'}} tickFormatter={month} tickCount={9}/><YAxis domain={[min,max]} axisLine={false} tickLine={false} width={62} tick={{fontSize:10,fill:'#8b929a'}} tickFormatter={(v)=>researchValue(Number(v),unit)}/>{zeroLine&&<ReferenceLine y={0} stroke="#b8bec5" strokeDasharray="3 3"/>}{stressLine&&<ReferenceLine y={80} stroke="#b8bec5" strokeDasharray="3 3"/>}<Tooltip content={<ResearchTip unit={unit}/>} cursor={{stroke:'#d9dee3'}}/><Area type="monotone" dataKey="value" stroke={RESEARCH_COLORS[tone]} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{r:4,strokeWidth:2,fill:'#fff',stroke:RESEARCH_COLORS[tone]}} isAnimationActive={false}/></AreaChart></ResponsiveContainer></div>
 }
