@@ -12,6 +12,7 @@ const price=(n:number)=>n>=1000?n.toLocaleString('en-US',{maximumFractionDigits:
 const pct=(n:number|null)=>n===null?'—':`${n>=0?'+':''}${(n*100).toFixed(3)}%`
 const spreadBp=(bid:number|null,ask:number|null)=>bid&&ask&&bid>0&&ask>0?((ask-bid)/((ask+bid)/2))*10000:null
 const sumKnown=(xs:(number|null)[])=>{const known=xs.filter((v):v is number=>v!==null);return known.length?known.reduce((s,v)=>s+v,0):null}
+const validationValue=(metric:string,n:number|null)=>n===null?'—':metric.includes('Market Count')?Math.round(n).toLocaleString():usd(n)
 const canonicalUnderlying=(raw:string)=>String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/(USDT|USDC|USD1|USD)$/,'').replace(/STOCK$/,'')
 
 function ChartCard({title,context,children,source,id}:{title:string;context:string;children:React.ReactNode;source:string;id?:string}){
@@ -181,7 +182,7 @@ export default async function Home(){
             <div className="validationBlock" style={{marginTop:16}}>
               <h3 style={{margin:'0 0 10px'}}>External validation snapshot</h3>
               <p style={{margin:'0 0 12px',fontSize:12,color:'#7b8490'}}>Audit-only references. External values never feed DuoData live totals.</p>
-              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Metric</th><th>DuoData direct</th><th>External</th><th>Δ</th><th>Validator</th><th>Status</th></tr></thead><tbody>{externalValidation.map(v=><tr key={`${v.venue}-${v.metric}-${v.source}`}><td><strong>{v.venue}</strong></td><td>{v.metric}</td><td>{v.direct===null?'—':usd(v.direct)}</td><td>{usd(v.external)}</td><td className={v.deltaPct===null?'':Math.abs(v.deltaPct)<=5?'positiveText':Math.abs(v.deltaPct)>15?'negativeText':''}>{v.deltaPct===null?'—':`${v.deltaPct>=0?'+':''}${v.deltaPct.toFixed(1)}%`}</td><td>{v.source}</td><td><span className="productTag">{v.status}</span></td></tr>)}</tbody></table></div>
+              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Metric</th><th>DuoData direct</th><th>External</th><th>Δ</th><th>Validator</th><th>Status</th></tr></thead><tbody>{externalValidation.map(v=><tr key={`${v.venue}-${v.metric}-${v.source}`}><td><strong>{v.venue}</strong></td><td>{v.metric}</td><td>{validationValue(v.metric,v.direct)}</td><td>{validationValue(v.metric,v.external)}</td><td className={v.deltaPct===null?'':Math.abs(v.deltaPct)<=5?'positiveText':Math.abs(v.deltaPct)>15?'negativeText':''}>{v.deltaPct===null?'—':`${v.deltaPct>=0?'+':''}${v.deltaPct.toFixed(1)}%`}</td><td>{v.source}</td><td><span className="productTag">{v.status}</span></td></tr>)}</tbody></table></div>
             </div>
             <div className="coverageTable" style={{marginTop:16}}><div className="coverageRow coverageHeader"><span>Metric</span><span>Status</span><span>Source / limitation</span></div>{data.coverage.map(c=><div className="coverageRow" key={c.metric}><strong>{c.metric}</strong><span><i className={`statusDot ${c.status.toLowerCase()}`}/>{c.status}</span><p>{c.note}<small>{c.source}</small></p></div>)}</div>
           </details>
