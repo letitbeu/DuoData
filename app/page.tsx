@@ -141,7 +141,7 @@ export default async function Home(){
           <a className="disabled">On-chain <em>soon</em></a>
           <a className="disabled">Exchanges <em>soon</em></a>
           <a className="disabled">Derivatives <em>soon</em></a>
-          <a className="disabled">Macro & Liquidity <em>soon</em></a>
+          <a href="/macro">Macro & Liquidity</a>
           <a className="disabled">Prediction Markets <em>soon</em></a>
         </div>
         <div className="coverageMini"><span>TradFi mapped universe</span><strong>{data.liveVenues} venues · {data.liveInstruments} instruments</strong><small>This is one DuoData module. Future modules will keep their own taxonomy, coverage and methodology.</small></div>
