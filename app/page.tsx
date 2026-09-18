@@ -5,6 +5,7 @@ import { buildExternalValidation } from '@/lib/external-validation'
 import { buildRegimeModel } from '@/lib/regime'
 import { brokerageAccessBars, brokerageAccessScores, publishedCoverageBars, realEquityVenues } from '@/lib/real-equity'
 import { FundingChart, HorizontalRanking, ProductDonut, RegimeQuadrantChart, ResearchLineChart, VenueBarChart } from '@/components/Charts'
+import ChartActions from '@/components/ChartActions'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -17,11 +18,19 @@ const sumKnown=(xs:(number|null)[])=>{const known=xs.filter((v):v is number=>v!=
 const validationValue=(metric:string,n:number|null)=>n===null?'—':metric.includes('Market Count')?Math.round(n).toLocaleString():usd(n)
 const canonicalUnderlying=(raw:string)=>String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/(USDT|USDC|USD1|USD)$/,'').replace(/STOCK$/,'')
 
-function ChartCard({title,context,children,source,id}:{title:string;context:string;children:React.ReactNode;source:string;id?:string}){
+type ExportRow=Record<string,string|number|boolean|null|undefined>
+
+function ChartCard({title,context,children,source,id,exportData}:{title:string;context:string;children:React.ReactNode;source:string;id?:string;exportData?:ExportRow[]}){
   return <article className="chartCard" id={id}>
     <div className="chartHeader"><div><h2>{title}</h2></div><span className="contextPill">{context}</span></div>
     <div className="chartBody">{children}<span className="chartWatermark" aria-hidden="true">Duo Data</span></div>
-    <div className="chartFooter"><span>{source}</span><a href="#methodology">Methodology</a></div>
+    <div className="chartFooter">
+      <span>{source}</span>
+      <div className="chartFooterRight" data-export-exclude="true">
+        {id&&exportData&&<ChartActions chartId={id} title={title} data={exportData}/>}
+        <a href="#methodology">Methodology</a>
+      </div>
+    </div>
   </article>
 }
 
@@ -164,19 +173,19 @@ export default async function Home(){
 
         <div className="sectionBar" id="research"><div><h2>Duo Research Indices</h2></div><small>2026 YTD · public historical APIs · no synthetic backfill</small></div>
         <section className="chartGrid">
-          <ChartCard title="Duo TradFi Activity Momentum" context="2026 YTD" source={`Median underlying momentum after cross-venue aggregation; fixed core basket, no current-volume selection · ${researchScope}`} id="activity-momentum"><ResearchLineChart data={research.activityMomentum} unit="pct" zeroLine tone="blue"/></ChartCard>
-          <ChartCard title="Duo TradFi Participation Breadth" context="2026 YTD" source="Share of fixed core underlyings with positive 7D-vs-30D turnover momentum; each underlying equal-weighted"><ResearchLineChart data={research.participationBreadth} unit="index" tone="violet"/></ChartCard>
-          <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion"><ResearchLineChart data={research.priceDispersion} unit="bp" tone="orange"/></ChartCard>
-          <ChartCard title="Duo Cross-Venue Funding Stress" context="2026 YTD" source={`8H-normalized absolute funding · venue-first aggregation · rolling 60-day percentile · ${research.meta.fundingVenues.join(' / ')||'public venue APIs'} · ${research.meta.fundingSeries} venue-instrument series · 80+ = elevated`}><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
-          <ChartCard title="Duo Market Regime Quadrant" context={regime.current?.regime?.toUpperCase()||'CURRENT'} source={`Four-factor regime model · X = Activity Momentum + Participation Breadth · Y = Funding Stress + Price Dispersion percentile · 7D EMA · 60-day trail`}><RegimeQuadrantChart data={regime.points}/></ChartCard>
-          <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only"><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
-          <ChartCard title="Live Cross-Venue Dislocation Radar" context="LIVE" source="Peak-to-peak last-price dispersion for the same canonical underlying across 2+ venues · >25% unit mismatches excluded"><HorizontalRanking data={liveDislocations} unit="bp" limit={10} labelWidth={220} maxLabelChars={36}/></ChartCard>
+          <ChartCard title="Duo TradFi Activity Momentum" context="2026 YTD" source={`Median underlying momentum after cross-venue aggregation; fixed core basket, no current-volume selection · ${researchScope}`} id="activity-momentum" exportData={research.activityMomentum.map(x=>({date:new Date(x.t).toISOString().slice(0,10),activity_momentum_pct:x.value}))}><ResearchLineChart data={research.activityMomentum} unit="pct" zeroLine tone="blue"/></ChartCard>
+          <ChartCard title="Duo TradFi Participation Breadth" context="2026 YTD" source="Share of fixed core underlyings with positive 7D-vs-30D turnover momentum; each underlying equal-weighted" id="participation-breadth" exportData={research.participationBreadth.map(x=>({date:new Date(x.t).toISOString().slice(0,10),participation_breadth:x.value}))}><ResearchLineChart data={research.participationBreadth} unit="index" tone="violet"/></ChartCard>
+          <ChartCard title="Duo Cross-Venue Price Dispersion" context="2026 YTD" source="Median same-underlying close-price dispersion across 2+ venues · basis points · contract-unit mismatches excluded" id="price-dispersion" exportData={research.priceDispersion.map(x=>({date:new Date(x.t).toISOString().slice(0,10),price_dispersion_bp:x.value}))}><ResearchLineChart data={research.priceDispersion} unit="bp" tone="orange"/></ChartCard>
+          <ChartCard title="Duo Cross-Venue Funding Stress" context="2026 YTD" source={`8H-normalized absolute funding · venue-first aggregation · rolling 60-day percentile · ${research.meta.fundingVenues.join(' / ')||'public venue APIs'} · ${research.meta.fundingSeries} venue-instrument series · 80+ = elevated`} id="funding-stress" exportData={research.fundingStress.map(x=>({date:new Date(x.t).toISOString().slice(0,10),funding_stress_percentile:x.value}))}><ResearchLineChart data={research.fundingStress} unit="index" stressLine tone="rose"/></ChartCard>
+          <ChartCard title="Duo Market Regime Quadrant" context={regime.current?.regime?.toUpperCase()||'CURRENT'} source={`Four-factor regime model · X = Activity Momentum + Participation Breadth · Y = Funding Stress + Price Dispersion percentile · 7D EMA · 60-day trail`} id="market-regime" exportData={regime.points.map(x=>({date:new Date(x.t).toISOString().slice(0,10),expansion:x.expansion,stress:x.stress,regime:x.regime,activity_momentum:x.activity,participation_breadth:x.breadth,price_dispersion_bp:x.dispersion,funding_stress:x.funding}))}><RegimeQuadrantChart data={regime.points}/></ChartCard>
+          <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only" id="tradfi-penetration" exportData={penetration.rows.map(x=>({venue:x.venue,tradfi_perps_volume_usd:x.tradFiVolume,all_perps_volume_usd:x.allPerpsVolume,penetration_ratio_pct:x.ratioPct,source:x.source}))}><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
+          <ChartCard title="Live Cross-Venue Dislocation Radar" context="LIVE" source="Peak-to-peak last-price dispersion for the same canonical underlying across 2+ venues · >25% unit mismatches excluded" id="dislocation-radar" exportData={liveDislocations.map(x=>({market_pair:x.label,dislocation_bp:x.value}))}><HorizontalRanking data={liveDislocations} unit="bp" limit={10} labelWidth={220} maxLabelChars={36}/></ChartCard>
 
         </section>
 
         <div className="sectionBar" id="real-equity"><div><h2>Real Equity Access</h2></div><small>Direct stock / ETF brokerage only · platform client volume remains private unless venue-published</small></div>
         <section className="chartGrid">
-          <ChartCard title="Duo Brokerage Access Index" context="0–100" source="Composite score only. Internally: 65% Access + 35% Usability, where Usability = 100 − Friction. Access and Friction are methodology layers, not standalone headline indices."><VenueBarChart data={brokerageAccessBars} unit="index" maxValue={100}/></ChartCard>
+          <ChartCard title="Duo Brokerage Access Index" context="0–100" source="Composite score only. Internally: 65% Access + 35% Usability, where Usability = 100 − Friction. Access and Friction are methodology layers, not standalone headline indices." id="brokerage-access-index" exportData={brokerageAccessScores.map(x=>({venue:x.venue,bai:x.score,access_score:x.accessScore,friction_score:x.frictionScore,coverage:x.access.coverage,hours:x.access.hours,fractional:x.access.fractional,funding:x.access.funding,transfer:x.access.transfer,lending:x.access.lending,ownership:x.access.ownership,geo_friction:x.friction.geography,transfer_friction:x.friction.transfer}))}><VenueBarChart data={brokerageAccessBars} unit="index" maxValue={100}/></ChartCard>
           <ChartCard title="Published Real Equity Coverage" context="CURRENT" source="Venue-published minimum/approximate securities counts; region-dependent. Gemini publishes 'thousands' without a precise count and is excluded from this bar chart."><VenueBarChart data={publishedCoverageBars} unit="count"/></ChartCard>
           <article className="chartCard">
             <div className="chartHeader"><div><h2>BAI Decomposition</h2></div><span className="contextPill">ACCESS + FRICTION</span></div>
