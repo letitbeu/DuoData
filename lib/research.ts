@@ -10,6 +10,8 @@ export type ResearchSeries = {
     venues: string[]
     underlyings: string[]
     candleSeries: number
+    fundingVenues: string[]
+    fundingSeries: number
     errors: string[]
   }
 }
@@ -21,6 +23,7 @@ const YEAR_START = Date.UTC(2026, 0, 1)
 const NOW = Date.now()
 const CORE = ['XAU', 'XAG', 'WTI', 'NVDA', 'TSLA', 'AAPL', 'META', 'AMZN', 'GOOGL', 'QQQ', 'SPY', 'SPX'] as const
 const HIST_VENUES = new Set(['Binance', 'Bybit', 'Bitget'])
+const FUNDING_VENUES = new Set(['Binance', 'Bybit', 'Bitget', 'OKX'])
 
 const n = (v: unknown): number | null => {
   const x = Number(v)
@@ -216,55 +219,171 @@ function dispersion(series: HistSeries[]): ResearchPoint[] {
   })
 }
 
-async function binanceFunding(symbol: string): Promise<Array<{t:number; rate:number}>> {
-  const out: Array<{t:number; rate:number}> = []
-  let start = YEAR_START
-  for (let page = 0; page < 3 && start <= NOW; page++) {
-    const url = `https://fapi.binance.com/fapi/v1/fundingRate?symbol=${encodeURIComponent(symbol)}&startTime=${start}&endTime=${NOW}&limit=1000`
-    const rows = await cachedJson<any[]>(url)
-    if (!Array.isArray(rows) || !rows.length) break
-    for (const r of rows) {
-      const t = n(r?.fundingTime), rate = n(r?.fundingRate)
-      if (t !== null && rate !== null) out.push({ t, rate })
+type FundingObs={t:number;rate:number}
+
+async function binanceFunding(symbol:string):Promise<FundingObs[]>{
+  const out:FundingObs[]=[]
+  let start=YEAR_START
+  for(let page=0;page<3&&start<=NOW;page++){
+    const url=`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${encodeURIComponent(symbol)}&startTime=${start}&endTime=${NOW}&limit=1000`
+    const rows=await cachedJson<any[]>(url)
+    if(!Array.isArray(rows)||!rows.length)break
+    for(const r of rows){
+      const t=n(r?.fundingTime),rate=n(r?.fundingRate)
+      if(t!==null&&rate!==null&&t>=YEAR_START)out.push({t,rate})
     }
-    const last = n(rows[rows.length - 1]?.fundingTime)
-    if (last === null || rows.length < 1000) break
-    start = last + 1
+    const last=n(rows[rows.length-1]?.fundingTime)
+    if(last===null||rows.length<1000)break
+    start=last+1
   }
-  return out
+  return out.sort((a,b)=>a.t-b.t)
 }
 
-async function fundingStress(selected: Array<{row: MarketRow; core: string}>, errors: string[]): Promise<ResearchPoint[]> {
-  const binance = selected.filter(x => x.row.venue === 'Binance')
-  const settled = await Promise.allSettled(binance.map(x => binanceFunding(x.row.symbol)))
-  const daily = new Map<number, number[]>()
-  settled.forEach((r, i) => {
-    if (r.status === 'rejected') {
-      errors.push(`Funding ${binance[i]?.row.symbol}: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`)
+async function bybitFunding(symbol:string):Promise<FundingObs[]>{
+  const out:FundingObs[]=[]
+  let end=NOW
+  for(let page=0;page<8;page++){
+    const q=`/v5/market/funding/history?category=linear&symbol=${encodeURIComponent(symbol)}&endTime=${end}&limit=200`
+    const res=await bybitJson<any>(q)
+    if(res?.retCode!==0)throw new Error(`Bybit funding ${symbol}: ${res?.retMsg||'API error'}`)
+    const rows=Array.isArray(res?.result?.list)?res.result.list:[]
+    if(!rows.length)break
+    let oldest=Infinity
+    for(const r of rows){
+      const t=n(r?.fundingRateTimestamp),rate=n(r?.fundingRate)
+      if(t!==null){oldest=Math.min(oldest,t);if(rate!==null&&t>=YEAR_START)out.push({t,rate})}
+    }
+    if(!Number.isFinite(oldest)||oldest<=YEAR_START||rows.length<200)break
+    end=oldest-1
+  }
+  return out.sort((a,b)=>a.t-b.t)
+}
+
+async function bitgetFunding(symbol:string):Promise<FundingObs[]>{
+  const out:FundingObs[]=[]
+  for(let page=1;page<=10;page++){
+    const url=`https://api.bitget.com/api/v2/mix/market/history-fund-rate?symbol=${encodeURIComponent(symbol)}&productType=USDT-FUTURES&pageSize=100&pageNo=${page}`
+    const res=await cachedJson<any>(url)
+    if(res?.code&&res.code!=='00000')throw new Error(`Bitget funding ${symbol}: ${res?.msg||res.code}`)
+    const rows=Array.isArray(res?.data)?res.data:[]
+    if(!rows.length)break
+    let oldest=Infinity
+    for(const r of rows){
+      const t=n(r?.fundingTime),rate=n(r?.fundingRate)
+      if(t!==null){oldest=Math.min(oldest,t);if(rate!==null&&t>=YEAR_START)out.push({t,rate})}
+    }
+    if(oldest<=YEAR_START||rows.length<100)break
+  }
+  return out.sort((a,b)=>a.t-b.t)
+}
+
+async function okxFunding(symbol:string):Promise<FundingObs[]>{
+  const out:FundingObs[]=[]
+  let after:string|undefined
+  for(let page=0;page<4;page++){
+    const qs=new URLSearchParams({instId:symbol,limit:'400'})
+    if(after)qs.set('after',after)
+    const res=await cachedJson<any>(`https://www.okx.com/api/v5/public/funding-rate-history?${qs.toString()}`)
+    if(res?.code!=='0')throw new Error(`OKX funding ${symbol}: ${res?.msg||res?.code||'API error'}`)
+    const rows=Array.isArray(res?.data)?res.data:[]
+    if(!rows.length)break
+    let oldest=Infinity
+    for(const r of rows){
+      const t=n(r?.fundingTime),rate=n(r?.realizedRate??r?.fundingRate)
+      if(t!==null){oldest=Math.min(oldest,t);if(rate!==null&&t>=YEAR_START)out.push({t,rate})}
+    }
+    if(!Number.isFinite(oldest)||oldest<=YEAR_START||rows.length<400)break
+    after=String(oldest)
+  }
+  return out.sort((a,b)=>a.t-b.t)
+}
+
+async function fetchFunding(venue:string,symbol:string):Promise<FundingObs[]>{
+  if(venue==='Binance')return binanceFunding(symbol)
+  if(venue==='Bybit')return bybitFunding(symbol)
+  if(venue==='Bitget')return bitgetFunding(symbol)
+  if(venue==='OKX')return okxFunding(symbol)
+  return []
+}
+
+function normalizeFunding8h(xs:FundingObs[]){
+  if(!xs.length)return []
+  const sorted=[...xs].sort((a,b)=>a.t-b.t)
+  return sorted.map((x,i)=>{
+    const prev=i>0?sorted[i-1]:null
+    const next=i+1<sorted.length?sorted[i+1]:null
+    let hours=8
+    const gapPrev=prev?(x.t-prev.t)/3600000:null
+    const gapNext=next?(next.t-x.t)/3600000:null
+    const gap=gapPrev&&gapPrev>0&&gapPrev<=24?gapPrev:gapNext&&gapNext>0&&gapNext<=24?gapNext:null
+    if(gap)hours=gap
+    return {t:x.t,rate8h:x.rate*(8/hours)}
+  })
+}
+
+async function fundingStress(
+  selected:Array<{row:MarketRow;core:string}>,
+  errors:string[],
+):Promise<{series:ResearchPoint[];venues:string[];fundingSeries:number}>{
+  const universe=selected.filter(x=>FUNDING_VENUES.has(x.row.venue))
+  const settled=await Promise.allSettled(universe.map(async x=>({
+    venue:x.row.venue,
+    core:x.core,
+    symbol:x.row.symbol,
+    data:normalizeFunding8h(await fetchFunding(x.row.venue,x.row.symbol)),
+  })))
+
+  const dailyUnderlying=new Map<string,number[]>()
+  const liveVenues=new Set<string>()
+  let fundingSeries=0
+
+  settled.forEach((r,i)=>{
+    if(r.status==='rejected'){
+      errors.push(`Funding ${universe[i]?.row.venue} ${universe[i]?.row.symbol}: ${r.reason instanceof Error?r.reason.message:String(r.reason)}`)
       return
     }
-    for (const x of r.value) {
-      const t = day(x.t)
-      if (!daily.has(t)) daily.set(t, [])
-      daily.get(t)!.push(Math.abs(x.rate))
+    if(!r.value.data.length)return
+    liveVenues.add(r.value.venue)
+    fundingSeries++
+    for(const x of r.value.data){
+      const key=`${day(x.t)}|${r.value.core}`
+      if(!dailyUnderlying.has(key))dailyUnderlying.set(key,[])
+      dailyUnderlying.get(key)!.push(Math.abs(x.rate8h))
     }
   })
-  const raw = [...daily].sort((a,b)=>a[0]-b[0]).flatMap(([t, xs]) => {
-    const v = median(xs)
-    return v === null ? [] : [{t, raw:v}]
+
+  const daily=new Map<number,number[]>()
+  for(const [key,venueRates] of dailyUnderlying){
+    const v=median(venueRates)
+    if(v===null)continue
+    const t=Number(key.split('|')[0])
+    if(!daily.has(t))daily.set(t,[])
+    daily.get(t)!.push(v)
+  }
+
+  const raw=[...daily].sort((a,b)=>a[0]-b[0]).flatMap(([t,xs])=>{
+    const v=median(xs)
+    return v===null?[]:[{t,raw:v}]
   })
-  const out: ResearchPoint[] = []
-  raw.forEach((x, i) => {
-    const window = raw.slice(Math.max(0, i - 59), i + 1).map(y => y.raw)
-    if (window.length < 20) return
-    const rank = window.filter(v => v <= x.raw).length / window.length * 100
-    out.push({ t: x.t, value: rank })
+  const series:ResearchPoint[]=[]
+  raw.forEach((x,i)=>{
+    const window=raw.slice(Math.max(0,i-59),i+1).map(y=>y.raw)
+    if(window.length<20)return
+    const rank=window.filter(v=>v<=x.raw).length/window.length*100
+    series.push({t:x.t,value:rank})
   })
-  return out
+  return {series,venues:[...liveVenues],fundingSeries}
 }
 
 export async function getResearchSeries(markets: MarketRow[]): Promise<ResearchSeries> {
   const selected = selectSeries(markets)
+  const fundingSelected = markets
+    .filter(m=>m.productLayer==='TradFi Perps'&&FUNDING_VENUES.has(m.venue))
+    .map(m=>({row:m,core:coreUnderlying(m)}))
+    .filter((x):x is {row:MarketRow;core:string}=>Boolean(x.core))
+    .sort((a,b)=>`${a.row.venue}|${a.core}|${a.row.symbol}`.localeCompare(`${b.row.venue}|${b.core}|${b.row.symbol}`))
+  const fundingChosen=new Map<string,{row:MarketRow;core:string}>()
+  for(const x of fundingSelected){const key=`${x.row.venue}|${x.core}`;if(!fundingChosen.has(key))fundingChosen.set(key,x)}
   const errors: string[] = []
   const settled = await Promise.allSettled(selected.map(async x => ({
     venue: x.row.venue,
@@ -281,17 +400,19 @@ export async function getResearchSeries(markets: MarketRow[]): Promise<ResearchS
 
   const { activityMomentum, participationBreadth } = activityAndBreadth(series)
   const priceDispersion = dispersion(series)
-  const fundingStressSeries = await fundingStress(selected, errors)
+  const fundingResult = await fundingStress([...fundingChosen.values()], errors)
 
   return {
     activityMomentum,
     participationBreadth,
     priceDispersion,
-    fundingStress: fundingStressSeries,
+    fundingStress: fundingResult.series,
     meta: {
       venues: [...new Set(series.map(s => s.venue))],
       underlyings: [...new Set(series.map(s => s.underlying))],
       candleSeries: series.length,
+      fundingVenues: fundingResult.venues,
+      fundingSeries: fundingResult.fundingSeries,
       errors,
     },
   }
