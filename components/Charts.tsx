@@ -1,6 +1,6 @@
 'use client'
 
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
 
 type Row={label:string;value:number;venue?:string}
 type TimeRow={t:number;value:number}
@@ -36,6 +36,37 @@ export function HorizontalRanking({data,unit='usd',limit=8,labelWidth=200,maxLab
 export function ProductDonut({data}:{data:Row[]}){const rows=data.filter(d=>d.value>0);const total=rows.reduce((s,d)=>s+d.value,0);if(!rows.length)return <div className="emptyViz">No reliable data available</div>;return <div className="donutGrid"><div className="donutWrap"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={rows} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius={66} outerRadius={90} paddingAngle={1.5} stroke="none">{rows.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip content={<Tip unit="usd"/>}/></PieChart></ResponsiveContainer><div className="donutCenter"><span>Tracked</span><strong>{usd(total)}</strong><small>24H volume</small></div></div><div className="legendList">{rows.slice(0,6).map((d,i)=><div className="legendRow" key={d.label}><i style={{background:COLORS[i%COLORS.length]}}/><span>{d.label}</span><strong>{((d.value/total)*100).toFixed(1)}%</strong></div>)}</div></div>}
 
 export function FundingChart({data,limit=10,labelWidth=160}:{data:Row[];limit?:number;labelWidth?:number}){const rows=data.slice(0,limit).reverse();if(!rows.length)return <div className="emptyViz">No reliable data available</div>;const max=Math.max(...rows.map(r=>Math.abs(r.value)),.001);return <div className="chartBox rankChart"><ResponsiveContainer width="100%" height="100%"><BarChart data={rows} layout="vertical" margin={{top:6,right:62,left:4,bottom:2}}><CartesianGrid horizontal={false} stroke="#edf0f2"/><XAxis type="number" domain={[-max,max]} axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#8b929a'}} tickFormatter={pct}/><YAxis type="category" dataKey="label" axisLine={false} tickLine={false} width={labelWidth} interval={0} tick={<SingleLineYAxisTick maxChars={26}/>}/><ReferenceLine x={0} stroke="#b7bdc4"/><Tooltip content={<Tip unit="pct"/>} cursor={{fill:'#f6f7f8'}}/><Bar dataKey="value" radius={[2,2,2,2]} maxBarSize={14}>{rows.map((r,i)=><Cell key={i} fill={r.value>=0?'#F43F5E':'#10B981'}/>)}</Bar></BarChart></ResponsiveContainer></div>}
+
+
+type RegimeRow={t:number;expansion:number;stress:number;regime:string;activity:number;breadth:number;dispersion:number;funding:number}
+
+function RegimeTip({active,payload}:any){
+  if(!active||!payload?.length)return null
+  const p=payload[0].payload as RegimeRow
+  return <div className="chartTooltip"><strong>{p.regime}</strong><span>{new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(p.t))}</span><b>Expansion {p.expansion.toFixed(0)} · Stress {p.stress.toFixed(0)}</b><span>Momentum {p.activity>=0?'+':''}{p.activity.toFixed(1)}% · Breadth {p.breadth.toFixed(0)}</span><span>Dispersion {p.dispersion.toFixed(1)} bp · Funding stress {p.funding.toFixed(0)}</span></div>
+}
+
+export function RegimeQuadrantChart({data}:{data:RegimeRow[]}){
+  if(!data.length)return <div className="emptyViz">No reliable regime history available</div>
+  const trail=data.slice(-60)
+  const current=trail.at(-1)!
+  const history=trail.slice(0,-1)
+  return <div className="chartBox"><ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{top:16,right:18,left:6,bottom:10}}>
+    <ReferenceArea x1={0} x2={100} y1={-100} y2={0} fill="#10B981" fillOpacity={0.07} label={{value:'HEALTHY EXPANSION',position:'insideBottomRight',fill:'#059669',fontSize:10}}/>
+    <ReferenceArea x1={0} x2={100} y1={0} y2={100} fill="#F59E0B" fillOpacity={0.07} label={{value:'OVERHEATED EXPANSION',position:'insideTopRight',fill:'#D97706',fontSize:10}}/>
+    <ReferenceArea x1={-100} x2={0} y1={-100} y2={0} fill="#2563EB" fillOpacity={0.055} label={{value:'QUIET / RESET',position:'insideBottomLeft',fill:'#2563EB',fontSize:10}}/>
+    <ReferenceArea x1={-100} x2={0} y1={0} y2={100} fill="#F43F5E" fillOpacity={0.055} label={{value:'STRESS CONTRACTION',position:'insideTopLeft',fill:'#E11D48',fontSize:10}}/>
+    <CartesianGrid stroke="#edf0f2"/>
+    <XAxis type="number" dataKey="expansion" domain={[-100,100]} ticks={[-100,-50,0,50,100]} axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#8b929a'}} label={{value:'Expansion / Participation →',position:'insideBottomRight',offset:-4,fill:'#6b7280',fontSize:10}}/>
+    <YAxis type="number" dataKey="stress" domain={[-100,100]} ticks={[-100,-50,0,50,100]} axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#8b929a'}} width={44} label={{value:'Stress / Dislocation →',angle:-90,position:'insideLeft',fill:'#6b7280',fontSize:10}}/>
+    <ZAxis range={[28,28]}/>
+    <ReferenceLine x={0} stroke="#aeb5bd" strokeDasharray="4 4"/>
+    <ReferenceLine y={0} stroke="#aeb5bd" strokeDasharray="4 4"/>
+    <Tooltip content={<RegimeTip/>} cursor={{strokeDasharray:'3 3'}}/>
+    <Scatter data={history} fill="#64748B" fillOpacity={0.35} line={{stroke:'#94A3B8',strokeWidth:1.4}} lineType="joint" isAnimationActive={false}/>
+    <Scatter data={[current]} fill="#111827" shape="circle" isAnimationActive={false}/>
+  </ScatterChart></ResponsiveContainer></div>
+}
 
 export function ResearchLineChart({data,unit,zeroLine=false,stressLine=false,tone='blue'}:{data:TimeRow[];unit:'pct'|'bp'|'index';zeroLine?:boolean;stressLine?:boolean;tone?:keyof typeof RESEARCH_COLORS}){
   if(!data.length)return <div className="emptyViz">No reliable 2026 history available</div>
