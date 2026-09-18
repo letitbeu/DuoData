@@ -2,7 +2,7 @@ import { getSnapshot } from '@/lib/market'
 import { getResearchSeries } from '@/lib/research'
 import { getPenetrationRatios } from '@/lib/penetration'
 import { buildExternalValidation } from '@/lib/external-validation'
-import { brokerageAccessBars, brokerageAccessScores, publishedCoverageBars, realEquityVenues } from '@/lib/real-equity'
+import { accessScoreBars, brokerageAccessBars, brokerageAccessScores, frictionScoreBars, publishedCoverageBars, realEquityVenues } from '@/lib/real-equity'
 import { FundingChart, HorizontalRanking, ProductDonut, ResearchLineChart, VenueBarChart } from '@/components/Charts'
 
 export const dynamic = 'force-dynamic'
@@ -145,19 +145,28 @@ export default async function Home(){
 
         <div className="sectionBar" id="real-equity"><div><h2>Real Equity Access</h2></div><small>Direct stock / ETF brokerage only · platform client volume remains private unless venue-published</small></div>
         <section className="chartGrid">
-          <ChartCard title="Duo Brokerage Access Index" context="0–100" source="Coverage 25 · 24/5 15 · fractional 10 · entry friction 10 · crypto-native funding 15 · transfers 10 · securities lending 5 · beneficial ownership 10. Unverified features receive no points."><VenueBarChart data={brokerageAccessBars} unit="index" maxValue={100}/></ChartCard>
+          <ChartCard title="Duo Brokerage Access Index" context="COMPOSITE" source="BAI = 65% Access Score + 35% Usability Score, where Usability = 100 − Friction. Access rewards capability; Friction penalizes real-world restrictions and costs."><VenueBarChart data={brokerageAccessBars} unit="index" maxValue={100}/></ChartCard>
+          <ChartCard title="Access Score" context="HIGHER IS BETTER" source="Coverage 30 · 24/5 15 · fractional 10 · crypto-native funding 15 · transfers 15 · securities lending 5 · beneficial ownership 10. Unverified capabilities receive no access points."><VenueBarChart data={accessScoreBars} unit="index" maxValue={100}/></ChartCard>
+          <ChartCard title="Friction Score" context="LOWER IS BETTER" source="Geographic restriction 25 · transfer friction 20 · funding friction 15 · extended-hours limitations 15 · entry friction 10 · account complexity 10 · evidence uncertainty 5."><VenueBarChart data={frictionScoreBars} unit="index" maxValue={100}/></ChartCard>
           <ChartCard title="Published Real Equity Coverage" context="CURRENT" source="Venue-published minimum/approximate securities counts; region-dependent. Gemini publishes 'thousands' without a precise count and is excluded from this bar chart."><VenueBarChart data={publishedCoverageBars} unit="count"/></ChartCard>
           <article className="chartCard">
-            <div className="chartHeader"><div><h2>BAI Score Decomposition</h2></div><span className="contextPill">8 DIMENSIONS</span></div>
+            <div className="chartHeader"><div><h2>BAI Access Decomposition</h2></div><span className="contextPill">7 DIMENSIONS</span></div>
             <div className="chartBody" style={{height:'auto',minHeight:300}}>
-              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>BAI</th><th>Coverage</th><th>24/5</th><th>Fractional</th><th>Entry</th><th>Funding</th><th>Transfer</th><th>Lending</th><th>Ownership</th></tr></thead><tbody>{brokerageAccessScores.map(v=><tr key={v.venue}><td><strong>{v.venue}</strong><small>{v.band}</small></td><td><strong>{v.score}</strong></td><td>{v.coverage}/25</td><td>{v.hours}/15</td><td>{v.fractional}/10</td><td>{v.entry}/10</td><td>{v.funding}/15</td><td>{v.transfer}/10</td><td>{v.lending}/5</td><td>{v.ownership}/10</td></tr>)}</tbody></table></div>
+              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>BAI</th><th>Access</th><th>Friction</th><th>Coverage</th><th>24/5</th><th>Fractional</th><th>Funding</th><th>Transfer</th><th>Lending</th><th>Ownership</th></tr></thead><tbody>{brokerageAccessScores.map(v=><tr key={v.venue}><td><strong>{v.venue}</strong><small>{v.band}</small></td><td><strong>{v.score}</strong></td><td>{v.accessScore}</td><td>{v.frictionScore}</td><td>{v.access.coverage}/30</td><td>{v.access.hours}/15</td><td>{v.access.fractional}/10</td><td>{v.access.funding}/15</td><td>{v.access.transfer}/15</td><td>{v.access.lending}/5</td><td>{v.access.ownership}/10</td></tr>)}</tbody></table></div>
             </div>
-            <div className="chartFooter"><span>DuoData verified-public-feature methodology · missing public evidence is not inferred</span><a href="#methodology">Methodology</a></div>
+            <div className="chartFooter"><span>Access rewards verified capabilities only; missing public evidence is not inferred</span><a href="#methodology">Methodology</a></div>
+          </article>
+          <article className="chartCard">
+            <div className="chartHeader"><div><h2>BAI Friction Decomposition</h2></div><span className="contextPill">7 PENALTIES</span></div>
+            <div className="chartBody" style={{height:'auto',minHeight:300}}>
+              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Friction</th><th>Geography</th><th>Transfer</th><th>Funding</th><th>Hours</th><th>Entry</th><th>Account</th><th>Uncertainty</th></tr></thead><tbody>{brokerageAccessScores.map(v=><tr key={v.venue}><td><strong>{v.venue}</strong></td><td><strong>{v.frictionScore}</strong></td><td>{v.friction.geography}/25</td><td>{v.friction.transfer}/20</td><td>{v.friction.funding}/15</td><td>{v.friction.hours}/15</td><td>{v.friction.entry}/10</td><td>{v.friction.account}/10</td><td>{v.friction.uncertainty}/5</td></tr>)}</tbody></table></div>
+            </div>
+            <div className="chartFooter"><span>Lower friction is better · fee / restriction evidence is tied to venue-published sources</span><a href="#methodology">Methodology</a></div>
           </article>
           <article className="chartCard">
             <div className="chartHeader"><div><h2>Real Equity Access Matrix</h2></div><span className="contextPill">6 VENUES</span></div>
             <div className="chartBody" style={{height:'auto',minHeight:300}}>
-              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Coverage</th><th>24/5</th><th>Fractional</th><th>Minimum</th><th>Funding Rail</th><th>Transfer</th><th>Lending</th></tr></thead><tbody>{realEquityVenues.map(v=><tr key={v.venue}><td><strong>{v.venue}</strong></td><td>{v.securitiesLabel}</td><td>{v.trading24x5?'Yes':'No'}</td><td>{v.fractional?'Yes':'No'}</td><td>{v.minOrder}</td><td>{v.funding}</td><td>{v.transfer==='yes'?'Verified':v.transfer==='no'?'No':'Not verified'}</td><td>{v.lending==='yes'?'Verified':v.lending==='no'?'No':'Not verified'}</td></tr>)}</tbody></table></div>
+              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Coverage</th><th>24/5</th><th>Fractional</th><th>Minimum</th><th>Funding Rail</th><th>Transfer</th><th>Lending</th></tr></thead><tbody>{realEquityVenues.map(v=><tr key={v.venue}><td><strong>{v.venue}</strong></td><td>{v.securitiesLabel}</td><td>{v.trading24x5?'Yes':'No'}</td><td>{v.fractional?'Yes':'No'}</td><td>{v.minOrder}</td><td>{v.funding}</td><td>{v.transfer==='bidirectional'?'In / Out':v.transfer==='inbound'?'In only':v.transfer==='unsupported'?'No':'Not verified'}</td><td>{v.lending==='yes'?'Verified':v.lending==='no'?'No':'Not verified'}</td></tr>)}</tbody></table></div>
             </div>
             <div className="chartFooter"><span>Official venue product pages · as of 18 Sep 2026</span><a href="#methodology">Methodology</a></div>
           </article>
@@ -213,7 +222,7 @@ export default async function Home(){
           </details>
         </section>
 
-        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V1.5 · Brokerage Access Index + multi-venue Real Equity + Tokenized Spot + Perps</span></footer>
+        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V1.6 · Access + Friction Brokerage Index · Multi-venue Real Equity + Tokenized Spot + Perps</span></footer>
       </main>
     </div>
   </div>
