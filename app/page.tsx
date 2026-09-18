@@ -1,6 +1,7 @@
 import { getSnapshot } from '@/lib/market'
 import { getResearchSeries } from '@/lib/research'
 import { getPenetrationRatios } from '@/lib/penetration'
+import { buildExternalValidation } from '@/lib/external-validation'
 import { FundingChart, HorizontalRanking, ProductDonut, ResearchLineChart, VenueBarChart } from '@/components/Charts'
 
 export const dynamic = 'force-dynamic'
@@ -63,6 +64,7 @@ export default async function Home(){
   const asOf=new Date(data.asOf).toLocaleString('en-GB',{timeZone:'Asia/Singapore',hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})
   const researchScope=`${research.meta.candleSeries} historical venue-instrument series · ${research.meta.venues.join(' / ')||'public APIs'}`
   const penetrationBars=penetration.rows.map(x=>({label:x.venue,value:x.ratioPct}))
+  const externalValidation=buildExternalValidation(data.markets,penetration.rows)
   const dislocationGroups=new Map<string,typeof perps>()
   perps.filter(m=>m.lastPrice>0).forEach(m=>{
     const key=canonicalUnderlying(m.underlying)
@@ -175,6 +177,11 @@ export default async function Home(){
             <div className="qualityMatrix" style={{marginTop:16}}>
               <div className="qualityHead"><span>Venue</span><span>Instruments</span><span>Volume</span><span>OI</span><span>Funding</span><span>Spread</span><span>Classified</span></div>
               {qualityRows.map(q=><div className="qualityRow" key={q.venue}><strong>{q.venue}</strong><span>{q.instruments}</span><span>{q.volume}%</span><span>{q.oi}%</span><span>{q.funding}%</span><span>{q.spread}%</span><span>{q.classified}%</span></div>)}
+            </div>
+            <div className="validationBlock" style={{marginTop:16}}>
+              <h3 style={{margin:'0 0 10px'}}>External validation snapshot</h3>
+              <p style={{margin:'0 0 12px',fontSize:12,color:'#7b8490'}}>Audit-only references. External values never feed DuoData live totals.</p>
+              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Metric</th><th>DuoData direct</th><th>External</th><th>Δ</th><th>Validator</th><th>Status</th></tr></thead><tbody>{externalValidation.map(v=><tr key={`${v.venue}-${v.metric}-${v.source}`}><td><strong>{v.venue}</strong></td><td>{v.metric}</td><td>{v.direct===null?'—':usd(v.direct)}</td><td>{usd(v.external)}</td><td className={v.deltaPct===null?'':Math.abs(v.deltaPct)<=5?'positiveText':Math.abs(v.deltaPct)>15?'negativeText':''}>{v.deltaPct===null?'—':`${v.deltaPct>=0?'+':''}${v.deltaPct.toFixed(1)}%`}</td><td>{v.source}</td><td><span className="productTag">{v.status}</span></td></tr>)}</tbody></table></div>
             </div>
             <div className="coverageTable" style={{marginTop:16}}><div className="coverageRow coverageHeader"><span>Metric</span><span>Status</span><span>Source / limitation</span></div>{data.coverage.map(c=><div className="coverageRow" key={c.metric}><strong>{c.metric}</strong><span><i className={`statusDot ${c.status.toLowerCase()}`}/>{c.status}</span><p>{c.note}<small>{c.source}</small></p></div>)}</div>
           </details>
