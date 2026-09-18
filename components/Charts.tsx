@@ -46,12 +46,33 @@ function RegimeTip({active,payload}:any){
   return <div className="chartTooltip"><strong>{p.regime}</strong><span>{new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(p.t))}</span><b>Expansion {p.expansion.toFixed(0)} · Stress {p.stress.toFixed(0)}</b><span>Momentum {p.activity>=0?'+':''}{p.activity.toFixed(1)}% · Breadth {p.breadth.toFixed(0)}</span><span>Dispersion {p.dispersion.toFixed(1)} bp · Funding stress {p.funding.toFixed(0)}</span></div>
 }
 
+function RegimeCurrentDot({cx=0,cy=0}:any){
+  return <g>
+    <circle cx={cx} cy={cy} r={10} fill="#0F172A" fillOpacity={0.14}/>
+    <circle cx={cx} cy={cy} r={7} fill="#0F172A" stroke="#FFFFFF" strokeWidth={2.5}/>
+    <circle cx={cx} cy={cy} r={8.5} fill="none" stroke="#0F172A" strokeWidth={2}/>
+    <text x={cx+12} y={cy-10} fill="#0F172A" fontSize={10} fontWeight={800}>CURRENT</text>
+  </g>
+}
+
 export function RegimeQuadrantChart({data}:{data:RegimeRow[]}){
   if(!data.length)return <div className="emptyViz">No reliable regime history available</div>
   const trail=data.slice(-60)
   const current=trail.at(-1)!
   const history=trail.slice(0,-1)
-  return <div className="chartBox"><ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{top:16,right:18,left:6,bottom:10}}>
+  const chunkSize=Math.max(10,Math.ceil(trail.length/4))
+  const routeChunks:Array<RegimeRow[]>=[]
+  for(let i=0;i<trail.length-1;i+=chunkSize){
+    const end=Math.min(trail.length,i+chunkSize+1)
+    const chunk=trail.slice(i,end)
+    if(chunk.length>1)routeChunks.push(chunk)
+  }
+  return <div className="chartBox"><ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{top:16,right:44,left:6,bottom:10}}>
+    <defs>
+      <marker id="regime-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/>
+      </marker>
+    </defs>
     <ReferenceArea x1={0} x2={100} y1={-100} y2={0} fill="#10B981" fillOpacity={0.07} label={{value:'HEALTHY EXPANSION',position:'insideBottomRight',fill:'#059669',fontSize:10}}/>
     <ReferenceArea x1={0} x2={100} y1={0} y2={100} fill="#F59E0B" fillOpacity={0.07} label={{value:'OVERHEATED EXPANSION',position:'insideTopRight',fill:'#D97706',fontSize:10}}/>
     <ReferenceArea x1={-100} x2={0} y1={-100} y2={0} fill="#2563EB" fillOpacity={0.055} label={{value:'QUIET / RESET',position:'insideBottomLeft',fill:'#2563EB',fontSize:10}}/>
@@ -59,12 +80,13 @@ export function RegimeQuadrantChart({data}:{data:RegimeRow[]}){
     <CartesianGrid stroke="#edf0f2"/>
     <XAxis type="number" dataKey="expansion" domain={[-100,100]} ticks={[-100,-50,0,50,100]} axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#8b929a'}} label={{value:'Expansion / Participation →',position:'insideBottomRight',offset:-4,fill:'#6b7280',fontSize:10}}/>
     <YAxis type="number" dataKey="stress" domain={[-100,100]} ticks={[-100,-50,0,50,100]} axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#8b929a'}} width={44} label={{value:'Stress / Dislocation →',angle:-90,position:'insideLeft',fill:'#6b7280',fontSize:10}}/>
-    <ZAxis range={[28,28]}/>
+    <ZAxis range={[26,26]}/>
     <ReferenceLine x={0} stroke="#aeb5bd" strokeDasharray="4 4"/>
     <ReferenceLine y={0} stroke="#aeb5bd" strokeDasharray="4 4"/>
     <Tooltip content={<RegimeTip/>} cursor={{strokeDasharray:'3 3'}}/>
-    <Scatter data={history} fill="#64748B" fillOpacity={0.35} line={{stroke:'#94A3B8',strokeWidth:1.4}} lineType="joint" isAnimationActive={false}/>
-    <Scatter data={[current]} fill="#111827" shape="circle" isAnimationActive={false}/>
+    <Scatter data={history} fill="#64748B" fillOpacity={0.22} isAnimationActive={false}/>
+    {routeChunks.map((chunk,i)=><Scatter key={i} data={chunk} fill="transparent" shape={()=> <g/>} line={{stroke:'#64748B',strokeWidth:1.8,strokeOpacity:0.72,markerEnd:'url(#regime-arrow)'}} lineType="joint" isAnimationActive={false}/>)}
+    <Scatter data={[current]} shape={<RegimeCurrentDot/>} isAnimationActive={false}/>
   </ScatterChart></ResponsiveContainer></div>
 }
 
