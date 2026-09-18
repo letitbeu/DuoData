@@ -34,10 +34,10 @@ async function bitgetTokenizedSpot():Promise<MarketRow[]>{
   if(inst?.code!=='00000'||!Array.isArray(inst?.data))throw new Error('invalid Bitget spot instruments payload')
   if(tickers?.code!=='00000'||!Array.isArray(tickers?.data))throw new Error('invalid Bitget spot tickers payload')
   const tickerMap=new Map(tickers.data.map((x:any)=>[String(x.symbol).toUpperCase(),x]))
-  const stockMap=new Map(
+  const stockMap=new Map<string,string>(
     (Array.isArray(stockInfo?.data)?stockInfo.data:[])
-      .map((x:any)=>[String(x.symbol).toUpperCase(),String(x.code||'').toUpperCase()] as const)
-      .filter((x:any)=>x[0]&&x[1])
+      .map((x:any)=>[String(x.symbol).toUpperCase(),String(x.code||'').toUpperCase()] as [string,string])
+      .filter((x:[string,string])=>Boolean(x[0]&&x[1]))
   )
   const rows:MarketRow[]=[]
   for(const i of inst.data){
