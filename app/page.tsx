@@ -20,7 +20,7 @@ const canonicalUnderlying=(raw:string)=>String(raw||'').toUpperCase().replace(/[
 function ChartCard({title,context,children,source,id}:{title:string;context:string;children:React.ReactNode;source:string;id?:string}){
   return <article className="chartCard" id={id}>
     <div className="chartHeader"><div><h2>{title}</h2></div><span className="contextPill">{context}</span></div>
-    <div className="chartBody">{children}</div>
+    <div className="chartBody">{children}<span className="chartWatermark" aria-hidden="true">Duo Data</span></div>
     <div className="chartFooter"><span>{source}</span><a href="#methodology">Methodology</a></div>
   </article>
 }
@@ -106,7 +106,18 @@ export default async function Home(){
 
   return <div className="appShell">
     <header className="globalHeader">
-      <div className="wordmark"><span className="mark">D</span><div><strong>DuoData</strong><small>MARKET INTELLIGENCE</small></div></div>
+      <div className="wordmark"><span className="mark owlMark" aria-label="DuoData logo">
+        <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+          <rect width="64" height="64" rx="13" fill="#151515"/>
+          <path d="M8 13 L25 27 L21 31 L6 18 Q4 15 6.5 12.5 Q8 11 10 13Z" fill="#fff"/>
+          <path d="M56 13 L39 27 L43 31 L58 18 Q60 15 57.5 12.5 Q56 11 54 13Z" fill="#fff"/>
+          <path d="M8 26 Q12 18 20 20 Q29 23 32 31 Q26 45 14 43 Q5 40 5 31 Q5 28 8 26Z" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M56 26 Q52 18 44 20 Q35 23 32 31 Q38 45 50 43 Q59 40 59 31 Q59 28 56 26Z" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M14 28 Q18 23 24 27 Q24 35 18 36 Q13 34 14 28Z" fill="#FFC83D"/>
+          <path d="M50 28 Q46 23 40 27 Q40 35 46 36 Q51 34 50 28Z" fill="#FFC83D"/>
+          <path d="M32 38 L38 45 L32 58 L26 45 Z" fill="#fff"/>
+        </svg>
+      </span><div><strong>DuoData</strong><small>MARKET INTELLIGENCE</small></div></div>
       <nav className="globalNav"><a className="active" href="#overview">Data</a><a href="#markets">Markets</a><a href="#methodology">Methodology</a></nav>
       <div className="liveState"><i/>Live public APIs</div>
     </header>
