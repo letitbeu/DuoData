@@ -2,6 +2,7 @@ import { getSnapshot } from '@/lib/market'
 import { getResearchSeries } from '@/lib/research'
 import { getPenetrationRatios } from '@/lib/penetration'
 import { buildExternalValidation } from '@/lib/external-validation'
+import { publishedCoverageBars, realEquityVenues } from '@/lib/real-equity'
 import { FundingChart, HorizontalRanking, ProductDonut, ResearchLineChart, VenueBarChart } from '@/components/Charts'
 
 export const dynamic = 'force-dynamic'
@@ -110,7 +111,7 @@ export default async function Home(){
 
     <div className="terminal shell">
       <aside className="sideNav">
-        <div className="navGroup"><span>PRODUCT LAYERS</span><a className="selected" href="#overview">Overview</a><a href="#perps">TradFi Perps</a>{tokenizedSpot.length>0&&<a href="#tokenized-spot">Tokenized Spot</a>}<a className="disabled">Real Equity <em>private volume</em></a><a className="disabled">CFD / Broker <em>pending</em></a></div>
+        <div className="navGroup"><span>PRODUCT LAYERS</span><a className="selected" href="#overview">Overview</a><a href="#real-equity">Real Equity</a><a href="#perps">TradFi Perps</a>{tokenizedSpot.length>0&&<a href="#tokenized-spot">Tokenized Spot</a>}<a className="disabled">CFD / Broker <em>pending</em></a></div>
         <div className="navGroup"><span>RESEARCH</span><a href="#research">Duo Research Indices</a><a href="#activity-momentum">Activity Momentum</a><a href="#price-dispersion">Price Dispersion</a></div>
         <div className="navGroup"><span>MARKET STRUCTURE</span><a href="#volume">Volume</a><a href="#open-interest">Open Interest</a><a href="#funding">Funding</a><a href="#liquidity">Liquidity</a><a href="#methodology">Data Coverage</a></div>
         <div className="coverageMini"><span>Mapped universe</span><strong>{data.liveVenues} venues · {data.liveInstruments} instruments</strong><small>Product layers are classified first and never blindly summed together.</small></div>
@@ -140,6 +141,22 @@ export default async function Home(){
           <ChartCard title="Duo TradFi Penetration Ratio" context="CURRENT" source="TradFi Perps 24H turnover ÷ same-venue total perpetual turnover · direct venue APIs only"><VenueBarChart data={penetrationBars} unit="pct"/></ChartCard>
           <ChartCard title="Live Cross-Venue Dislocation Radar" context="LIVE" source="Peak-to-peak last-price dispersion for the same canonical underlying across 2+ venues · >25% unit mismatches excluded"><HorizontalRanking data={liveDislocations} unit="bp" limit={10} labelWidth={220} maxLabelChars={36}/></ChartCard>
 
+        </section>
+
+        <div className="sectionBar" id="real-equity"><div><h2>Real Equity Access</h2></div><small>Direct stock / ETF brokerage only · platform client volume remains private unless venue-published</small></div>
+        <section className="chartGrid">
+          <ChartCard title="Published Real Equity Coverage" context="CURRENT" source="Venue-published minimum/approximate securities counts; region-dependent. Gemini publishes 'thousands' without a precise count and is excluded from this bar chart."><VenueBarChart data={publishedCoverageBars} unit="count"/></ChartCard>
+          <article className="chartCard">
+            <div className="chartHeader"><div><h2>Real Equity Access Matrix</h2></div><span className="contextPill">6 VENUES</span></div>
+            <div className="chartBody" style={{height:'auto',minHeight:300}}>
+              <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Coverage</th><th>24/5</th><th>Fractional</th><th>Minimum</th><th>Funding Rail</th></tr></thead><tbody>{realEquityVenues.map(v=><tr key={v.venue}><td><strong>{v.venue}</strong></td><td>{v.securitiesLabel}</td><td>{v.trading24x5?'Yes':'No'}</td><td>{v.fractional?'Yes':'No'}</td><td>{v.minOrder}</td><td>{v.funding}</td></tr>)}</tbody></table></div>
+            </div>
+            <div className="chartFooter"><span>Official venue product pages · as of 18 Sep 2026</span><a href="#methodology">Methodology</a></div>
+          </article>
+        </section>
+        <section className="marketSection">
+          <div className="sectionBar tableTitle"><div><h2>Real Equity Brokerage Structure</h2></div><small>Ownership / clearing / regional access · no tokenized spot or CFD products</small></div>
+          <div className="tableWrap"><table><thead><tr><th>Venue</th><th>Brokerage / ownership structure</th><th>Regions</th><th>Source status</th></tr></thead><tbody>{realEquityVenues.map(v=><tr key={v.venue}><td><strong>{v.venue}</strong></td><td>{v.structure}</td><td>{v.regions}</td><td><span className="productTag">Official public source</span><small>{v.sourceNote}</small></td></tr>)}</tbody></table></div>
         </section>
 
         <div className="sectionBar" id="perps"><div><h2>TradFi Perps</h2></div><small>Stocks · ETFs · indices · commodities · FX · bonds · pre-IPO, kept within the derivatives layer</small></div>
@@ -188,7 +205,7 @@ export default async function Home(){
           </details>
         </section>
 
-        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V1.1 · Multi-venue validation · Public-data-only policy</span></footer>
+        <footer className="pageFooter"><strong>DuoData</strong><span>Independent market intelligence for TradFi on crypto exchanges.</span><span>V1.4 · Multi-venue Real Equity + Tokenized Spot + Perps · Public-data-only policy</span></footer>
       </main>
     </div>
   </div>
